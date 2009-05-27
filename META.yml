@@ -1,0 +1,21 @@
+---
+name: Validator-Custom
+version: 0.0201
+author:
+  - 'Yuki Kimoto <kimoto.yuki@gmail.com>'
+abstract: Custom validator
+license: perl
+resources:
+  license: ~
+requires:
+  Object::Simple: 0.0201
+build_requires:
+  Test::More: 0
+provides:
+  Validator::Custom:
+    file: lib/Validator/Custom.pm
+    version: 0.0201
+generated_by: Module::Build version 0.31012
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.2.html
+  version: 1.2
