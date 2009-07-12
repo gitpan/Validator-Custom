@@ -1,99 +1,136 @@
 package Validator::Custom;
 use Object::Simple;
 
-our $VERSION = '0.0204';
+our $VERSION = '0.0205';
 
 require Carp;
 
 ### class method
-{
-    # constraint function
-    my $CONSTRAINTS = {};
 
-    # add validator function
-    sub add_constraint{
-        my $self = shift;
-        $CONSTRAINTS = {%{$CONSTRAINTS}, ref $_[0] eq 'HASH' ? %{$_[0]} : @_};
-    }
-    # get validator function
-    sub constraints {
-        my $invocant = shift;
-        if(@_){
-            Carp::croak( "'constraints' is read only")
-        }
-        return $CONSTRAINTS;
-    }
+# add validator function
+sub add_constraint {
+    my $class = shift;
+    my %old_constraints = $class->constraints;
+    my %new_constraints = ref $_[0] eq 'HASH' ? %{$_[0]} : @_;
+    $class->constraints(%old_constraints, %new_constraints);
 }
 
+# get validator function
+sub constraints : ClassAttr { type => 'hash', deref => 1,  auto_build => \&_inherit_constraints }
+
+sub _inherit_constraints {
+    my $class = shift;
+    my $super =  do {
+        no strict 'refs';
+        ${"${class}::ISA"}[0];
+    };
+    my $constraints = eval{$super->can('constraints')}
+                        ? $super->constraints
+                        : {};
+                      
+    $class->constraints($constraints);
+}
 
 ### attribute
 
-# validator
-sub validator : Attr { type => 'array', default => sub { [] } }
+# validators
+sub validators  : Attr { type => 'array', default => sub { [] } }
 
 # validation errors
-sub errors    : Attr { type => 'array', default => sub { [] }, deref => 1}
+sub errors      : Attr { type => 'array', default => sub { [] }, deref => 1 }
 
+# error is stock?
+sub error_stock : Attr { default => 1 }
+
+# converted resutls
+sub results     : Attr { type => 'hash', default => sub{ {} }, deref => 1 }
 
 ### method
 
 # validate!
 sub validate {
-    my ($self, $hash, $validator ) = @_;
+    my ($self, $hash, $validators ) = @_;
+    my $class = ref $self;
     
-    $validator ||= $self->validator;
+    
+    $validators ||= $self->validators;
     
     $self->errors([]);
+    $self->results({});
+    my $error_stock = $self->error_stock;
+    
     # process each key
     VALIDATOR_LOOP:
-    for (my $i = 0; $i < @{$validator}; $i += 2) {
-        my ($key, $validator_infos) = @{$validator}[$i, ($i + 1)];
+    for (my $i = 0; $i < @{$validators}; $i += 2) {
+        my ($key, $validator_infos) = @{$validators}[$i, ($i + 1)];
         
         foreach my $validator_info (@$validator_infos){
-            my($validator_expression, $error_message ) = @$validator_info;
+            my($constraint_expression, $error_message, $options ) = @$validator_info;
             
-            my $validator_function;
             my $data_type = {};
-            # case: expression is code reference
-            if( ref $validator_expression eq 'CODE') {
-                $validator_function = $validator_expression;
+            my $args = [];
+            
+            if(ref $constraint_expression eq 'ARRAY') {
+                $args = [@{$constraint_expression}[1 .. @$constraint_expression - 1]];
+                $constraint_expression = $constraint_expression->[0];
             }
             
-            # case: expression is string
+            my $constraint_function;
+            # expression is code reference
+            if( ref $constraint_expression eq 'CODE') {
+                $constraint_function = $constraint_expression;
+            }
+            
+            # expression is string
             else {
-                if($validator_expression =~ /^(\@)?(.+)$/) {
-                    if($1 && $1 eq '@') {
-                    $DB::single = 1;
-                        $data_type->{array}++;
-                    }
-                    $validator_expression = $2;
-                    Carp::croak("Type name must be [A-Za-z_]")
-                        if $validator_expression =~ /\W/;
+                if($constraint_expression =~ /^\@(.+)$/) {
+                    $data_type->{array} = 1;
+                    $constraint_expression = $1;
                 }
-                # get validator function
-                $validator_function
-                  = $self->constraints->{$validator_expression};
                 
-                Carp::croak("'$validator_expression' is not resisted")
-                    unless ref $validator_function eq 'CODE'
+                Carp::croak("Constraint type '$constraint_expression' must be [A-Za-z0-9_]")
+                  if $constraint_expression =~ /\W/;
+                
+                # get validator function
+                $constraint_function
+                  = $class->constraints->{$constraint_expression};
+                
+                Carp::croak("'$constraint_expression' is not resisted")
+                    unless ref $constraint_function eq 'CODE'
             }
             
             # validate
             my $is_valid;
-            if($data_type->{array} && ref $hash->{$key} eq 'ARRAY') {
-                foreach my $data (@{$hash->{$key}}) {
-                    $is_valid = $validator_function->($data);
+            my $result;
+            if($data_type->{array}) {
+                my $values = ref $hash->{$key} eq 'ARRAY' ? $hash->{$key} : [$hash->{$key}];
+                
+                foreach my $data (@$values) {
+                    ($is_valid, $result) = $constraint_function->($data, $args, $options->{options});
                     last unless $is_valid;
+                    
+                    if (my $key = $options->{result}) {
+                        $self->results->{$key} ||= [];
+                        push @{$self->results->{$key}}, $result;
+                    }
                 }
             }
             else {
-                $is_valid = $validator_function->($hash->{$key});
+                ($is_valid, $result) = $constraint_function->(
+                    ref $key eq 'ARRAY' ? [map { $hash->{$_} } @$key] : $hash->{$key},
+                    $args,
+                    $options->{options}
+                );
+                
+                if ($is_valid && $options->{result}) {
+                    $self->results->{$options->{result}} = $result;
+                }
             }
             
             # add error if it is invalid
             unless($is_valid){
-                $self->errors([]) unless $self->errors;
                 push @{$self->errors}, $error_message;
+                last VALIDATOR_LOOP unless $error_stock;
                 next VALIDATOR_LOOP;
             }
         }
@@ -101,7 +138,7 @@ sub validate {
     return $self;
 }
 
-Object::Simple->build_class; # End of Object::Simple!
+Object::Simple->build_class;
 
 =head1 NAME
 
@@ -109,7 +146,7 @@ Validator::Custom - Custom validator
 
 =head1 VERSION
 
-Version 0.0204
+Version 0.0205
 
 =head1 CAUTION
 
@@ -123,7 +160,7 @@ Validator::Custom is yew experimental stage.
     my $hash = { title => 'aaa', content => 'bbb' };
     
     # validator functions
-    my $validator = [
+    my $validators = [
         title => [
             [sub{$_[0]},              "Specify title"],
             [sub{length $_[0] < 128}, "Too long title"]
@@ -136,10 +173,10 @@ Validator::Custom is yew experimental stage.
     
     # validate
     my $vc = Validator::Custom->new;
-    my @errors = $vc->validate($hash,$validator)->errors;
+    my @errors = $vc->validate($hash,$validators)->errors;
     
     # or
-    my $vc = Validator::Custom->new( validator => $validator);
+    my $vc = Validator::Custom->new( validators => $validators);
     my @errors = $vc->validate($hash)->errors;
     
     # process in error case
@@ -167,7 +204,7 @@ Validator::Custom is yew experimental stage.
     use Validator::Custom::Yours;
     my $hash = { age => 'aaa', weight => 'bbb', favarite => [qw/sport food/};
     
-    my $validator = [
+    my $validators = [
         title => [
             ['Int', "Must be integer"],
         ],
@@ -180,7 +217,31 @@ Validator::Custom is yew experimental stage.
     ];
     
     my $vc = Validator::Custom::Yours->new;
-    my $errors = $vc->validate($hash,$validator)->errors;
+    my $errors = $vc->validate($hash,$validators)->errors;
+    
+    # corelative check
+    my $validators => [
+        [qw/password1 password2/] => [
+            ['Same', 'passwor is not same']
+        ]
+    ]
+    
+    # pass options
+    my $validators => [
+        title => [
+            ['INT', 'Error', { options => { a => 1 } }]
+        ]
+    ]
+    
+    # get result
+    my $validators => [
+        title => [
+            ['INT', 'Error', { result => 'title' }]
+        ]
+    ];
+    
+    my %results = $vc->resuts;
+    
     
 =head1 CLASS METHOD
 
@@ -221,19 +282,31 @@ You can merge multiple custom class
 
 =head2 errors
 
-You can get validator errors
+You can get validating errors
 
     my @errors = $vc->errors;
 
 You can use this method after calling validate
 
-    my @errors = $vc->validate($hash,$validator)->errors;
+    my @errors = $vc->validate($hash,$validators)->errors;
 
-=head2 validator
+=head2 error_stock
 
-You can set validator
+If you stock error, set 1, or set 0.
 
-    $vc->validator($validator);
+Default is 1. 
+
+=head2 validators
+
+You can set validators
+
+    $vc->validators($validators);
+
+=head2 results
+
+You can get converted result if any.
+
+    $vc->results
 
 =head1 METHOD
 
@@ -247,11 +320,11 @@ create instance
 
 validate
 
-    $vc->validate($hash,$validator);
+    $vc->validate($hash,$validators);
 
 validator format is like the following.
 
-    my $validator = [
+    my $validators = [
         # Function
         key1 => [
             [ \&validator_function1, "Error message1-1"],

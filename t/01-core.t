@@ -9,7 +9,7 @@ eval"use $M";
 
 {
     my $hash = { k1 => 1, k2 => 2, k3 => 3 };
-    my $validator = [
+    my $validators = [
         k1 => [
             [sub{$_[0] == 1}, "k1Error1"],
             [sub{$_[0] == 2}, "k1Error2"],
@@ -23,21 +23,31 @@ eval"use $M";
     
     my $p = Validator::Custom->new;
     
-    my $errors = $M->new->validate($hash, $validator)->errors;
-    is_deeply($errors, [qw/k1Error2 k2Error2/], 'validator');
+    my $errors = $M->new->validate($hash, $validators)->errors;
+    is_deeply($errors, [qw/k1Error2 k2Error2/], 'validators');
     
-    my @errors = $M->new(validator => $validator)->validate($hash)->errors;
-    is_deeply([@errors], [qw/k1Error2 k2Error2/], 'validator');
+    my @errors = $M->new(validators => $validators)->validate($hash)->errors;
+    is_deeply([@errors], [qw/k1Error2 k2Error2/], 'validators');
+    
+    @errors = $M->new->error_stock(0)->validate($hash, $validators)->errors;
+    is(scalar @errors, 1, 'error_stock is 0');
+    is($errors[0], 'k1Error2', 'error_stock is 0');
 }
 
 {
-    is_deeply($M->new->validator, [], 'validator default');
+    is_deeply($M->new->validators, [], 'validators default');
+}
+
+{
+    my $o = $M->new;
+    $o->results(k => 1);
+    is_deeply({$o->results}, {k => 1}, 'results attribute');
 }
 
 use T1;
 {
     my $hash = { k1 => 1, k2 => 'a', k3 => 3.1, k4 => 'a' };
-    my $validator = [
+    my $validators = [
         k1 => [
             ['Int', "k1Error1"],
         ],
@@ -51,7 +61,7 @@ use T1;
             ['Num', "k4Error1"],
         ],
     ];    
-    my $errors = T1->new->validate($hash, $validator)->errors;
+    my $errors = T1->new->validate($hash, $validators)->errors;
     is_deeply($errors, [qw/k2Error1 k4Error1/], 'Custom validator');
     
     my $constraints = T1->constraints;
@@ -61,7 +71,7 @@ use T1;
 
 {
     my $hash = { k1 => 1, k2 => 'a', k3 => 3.1, k4 => 'a' };
-    my $validator = [
+    my $validators = [
         k1 => [
             ['Int', "k1Error1"],
         ],
@@ -77,34 +87,29 @@ use T1;
     ];
     
     my $t = T1->new;
-    my $errors = $t->validate($hash, $validator)->errors;
+    my $errors = $t->validate($hash, $validators)->errors;
     is_deeply($errors, [qw/k2Error1 k4Error1/], 'Custom validator one');
     
-    $errors = $t->validate($hash, $validator)->errors;
+    $errors = $t->validate($hash, $validators)->errors;
     is_deeply($errors, [qw/k2Error1 k4Error1/], 'Custom validator two');
     
 }
 
 {
     my $hash = {k1 => 1};
-    my $validator = [
+    my $validators = [
         k1 => [
             ['No', "k1Error1"],
         ],
     ];    
-    eval{T1->new->validate($hash, $validator)};
+    eval{T1->new->validate($hash, $validators)};
     like($@, qr/'No' is not resisted/, 'no custom type');
-}
-
-{
-    eval{T1->constraints({})};
-    like($@, qr/'constraints' is read only/, 'constraints is read only');
 }
 
 {
     use T2;
     my $hash = { k1 => 1, k2 => 'a', k3 => 3.1, k4 => 'a' };
-    my $validator = [
+    my $validators = [
         k1 => [
             ['Int', "k1Error1"],
         ],
@@ -118,7 +123,7 @@ use T1;
             ['Num', "k4Error1"],
         ],
     ];    
-    my $errors = T2->new->validate($hash, $validator)->errors;
+    my $errors = T2->new->validate($hash, $validators)->errors;
     is_deeply($errors, [qw/k2Error1 k4Error1/], 'mearge Custom validator');
     
     my $constraints = T2->constraints;
@@ -129,7 +134,7 @@ use T1;
 
 {
     my $hash = { k1 => 1, k2 => [1,2], k3 => [1,'a', 'b'], k4 => 'a'};
-    my $validator = [
+    my $validators = [
         k1 => [
             ['@Int', "k1Error1"],
         ],
@@ -143,19 +148,65 @@ use T1;
             ['@Int', "k4Error1"],
         ],
     ];    
-    my $errors = T1->new->validate($hash, $validator)->errors;
+    
+    my $vc = T1->new;
+    my $errors = $vc->validate($hash, $validators)->errors;
+
     is_deeply($errors, [qw/k3Error1 k4Error1/], 'array validate');
 }
 
 {
+    my $hash = {k1 => [1,2]};
+    my $validators = [
+        k1 => [
+            ['@C1', "k1Error1", {result => 'k1'}],
+        ],
+    ];    
+    
+    my $vc = T1->new;
+    my $errors = $vc->validate($hash, $validators)->errors;
+    is_deeply($errors, [], 'no error');
+    
+    my $results = $vc->results;
+    is_deeply($results, {k1 => [2,4]}, 'array validate');
+}
+
+
+{
     my $hash = { k1 => 1};
-    my $validator = [
+    my $validators = [
         k1 => [
             ['Int', "k1Error1"],
         ],
     ];    
-    my @errors = T1->new->validate($hash, $validator)->errors;
+    my @errors = T1->new->validate($hash, $validators)->errors;
     is(scalar @errors, 0, 'no error');
 }
+
+{
+    use T5;
+    my $hash = { k1 => 1, k2 => 'a'};
+    my $validators = [
+        [qw/k1 k2/] => [
+            [ ['C1', 3, 4], "k1Error1", { options => {opt => 5}, result => 'result1'}],
+        ],
+        [qw/k1 k2/] => [
+            [ ['C2', 3, 4], "k2Error1", { options => {opt => 5}, result => 'result2'}],
+        ],
+    ];
+    
+    my $t = T5->new;
+    my @errors = $t->validate($hash, $validators)->errors;
+    is_deeply([@errors], ['k2Error1'], 'variouse options');
+    
+    is_deeply($t->results->{result1},[[1, 'a'], [3, 4], {opt => 5}], 'result');
+    ok(!$t->results->{result2}, 'result not exist in error case');
+    
+    # clear
+    $t->validate;
+    is_deeply([$t->errors], [], 'clear error');
+    is_deeply(scalar $t->results, {}, 'clear results');
+}
+
 
 
