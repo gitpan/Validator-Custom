@@ -1,13 +1,5 @@
 Build.PL
 Changes
-cover_db/blib-lib-Validator-Custom-pm--branch.html
-cover_db/blib-lib-Validator-Custom-pm--condition.html
-cover_db/blib-lib-Validator-Custom-pm--subroutine.html
-cover_db/blib-lib-Validator-Custom-pm.html
-cover_db/cover.12
-cover_db/cover.css
-cover_db/coverage.html
-cover_db/structure/2c960a631253d333a41f90afb2424f5f
 lib/Validator/Custom.pm
 Makefile.PL
 MANIFEST			This list of files
