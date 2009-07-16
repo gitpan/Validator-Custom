@@ -1,6 +1,6 @@
 ---
 name: Validator-Custom
-version: 0.0209
+version: 0.0210
 author:
   - 'Yuki Kimoto <kimoto.yuki@gmail.com>'
 abstract: Custom validator
@@ -14,7 +14,7 @@ build_requires:
 provides:
   Validator::Custom:
     file: lib/Validator/Custom.pm
-    version: 0.0209
+    version: 0.0210
 generated_by: Module::Build version 0.31012
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.2.html

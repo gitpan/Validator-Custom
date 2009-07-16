@@ -193,7 +193,7 @@ use T1;
 
 {
     use T5;
-    my $hash = { k1 => 1, k2 => 'a', k3 => '  3  ', k4 => 4, k5 => 5, k6 => 5, k7 => 'a'};
+    my $hash = { k1 => 1, k2 => 'a', k3 => '  3  ', k4 => 4, k5 => 5, k6 => 5, k7 => 'a', k11 => [1,2]};
     my $validators = [
         k1 => [
             [{'C1' => [3, 4]}, "k1Error1"],
@@ -214,18 +214,33 @@ use T1;
         k7 => [
             {'C2' => [3, 4]},
         ],
+        k8 => [
+            'C4'
+        ],
+        k9 => [
+            {'C5' => 2}
+        ],
+        k10 => [
+            'C6'
+        ],
+        k11 => [
+            '@C6'
+        ]
     ];
     
     my $t = T5->new;
     my @errors = $t->validate($hash, $validators)->errors;
     is_deeply([@errors], ['k2Error1'], 'variouse options');
-    is_deeply([$t->invalid_keys], [qw/k2 k4 k7/], 'invalid key');
+    is_deeply([$t->invalid_keys], [qw/k2 k4 k7 k8/], 'invalid key');
     
     is_deeply($t->results->{k1},[1, [3, 4]], 'result');
     ok(!$t->results->{k2}, 'result not exist in error case');
     cmp_ok($t->results->{k3}, 'eq', 3, 'filter');
     ok(!$t->results->{k4}, 'result not set in case error');
-        
+    is($t->results->{k9}, 2, 'arg');
+    isa_ok($t->results->{k10}, 'T5');
+    isa_ok($t->results->{k11}->[0], 'T5');
+    isa_ok($t->results->{k11}->[1], 'T5');
     # clear
     $t->validate;
     is_deeply([$t->errors], [], 'clear error');
