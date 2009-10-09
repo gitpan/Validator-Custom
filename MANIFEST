@@ -12,6 +12,7 @@ t/01-core/T2.pm
 t/01-core/T3.pm
 t/01-core/T4.pm
 t/01-core/T5.pm
+t/01-core/T6.pm
 t/boilerplate.t
 t/pod-coverage.t
 t/pod.t
