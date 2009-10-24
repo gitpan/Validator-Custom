@@ -1,7 +1,7 @@
 package Validator::Custom;
 use Object::Simple;
 
-our $VERSION = '0.0602';
+our $VERSION = '0.0603';
 
 require Carp;
 
@@ -10,7 +10,6 @@ require Carp;
 # Get constraint functions
 sub constraints : ClassObjectAttr { type => 'hash', deref => 1,  auto_build => sub {
     shift->Object::Simple::initialize_class_object_attr(
-        accessor_name => 'constraints',
         clone         => 'hash',
         default       => sub { {} }
     );
@@ -248,7 +247,7 @@ Validator::Custom - Custom validator
 
 =head1 VERSION
 
-Version 0.0602
+Version 0.0603
 
 =head1 CAUTION
 

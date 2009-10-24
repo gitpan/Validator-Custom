@@ -1,6 +1,6 @@
 ---
 name: Validator-Custom
-version: 0.0602
+version: 0.0603
 author:
   - 'Yuki Kimoto <kimoto.yuki@gmail.com>'
 abstract: Custom validator
@@ -8,13 +8,13 @@ license: perl
 resources:
   license: ~
 requires:
-  Object::Simple: 2.0602
+  Object::Simple: 2.0603
 build_requires:
   Test::More: 0
 provides:
   Validator::Custom:
     file: lib/Validator/Custom.pm
-    version: 0.0602
+    version: 0.0603
   Validator::Custom::Result:
     file: lib/Validator/Custom.pm
 generated_by: Module::Build version 0.31012
