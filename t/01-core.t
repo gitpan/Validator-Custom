@@ -361,7 +361,7 @@ test 'Constraint function croak';
         ]
     ];
     eval{$o->validate($d, $validation_rule)};
-    like($@, qr/$SCRIPT_NAME/, "$test : scalar");
+    like($@, qr/Key 'a'.+$SCRIPT_NAME/ms, "$test : scalar");
     
     $d = {a => [1, 2]};
     $validation_rule = [
@@ -370,6 +370,6 @@ test 'Constraint function croak';
         ]
     ];
     eval{$o->validate($d, $validation_rule)};
-    like($@, qr/$SCRIPT_NAME/, "$test : scalar");
+    like($@, qr/Key 'a'.+$SCRIPT_NAME/ms, "$test : array");
     
 }

@@ -5,7 +5,7 @@ use strict;
 use warnings;
 use Carp 'croak';
 
-our $VERSION = '0.0606';
+our $VERSION = '0.0607';
 
 ### Class methods
 
@@ -129,9 +129,12 @@ sub validate {
                 my $first_validation = 1;
                 foreach my $data (@$value) {
                     my $product;
-                    ($is_valid, $product) = eval{$constraint_function->($data, $arg, $self)};
+                    eval {
+                        ($is_valid, $product) = $constraint_function->($data, $arg, $self);
+                    };
                     
-                    croak $@ if $@;
+                    croak "Constraint exception(Key '$product_key'). Error message: $@\n"
+                      if $@;
                     
                     last unless $is_valid;
                     
@@ -149,9 +152,12 @@ sub validate {
                 $value = ref $key eq 'ARRAY' ? [map { $data->{$_} } @$key] : $data->{$key}
                   unless defined $value;
                 
-                ($is_valid, $products) = eval{$constraint_function->($value, $arg, $self)};
+                eval {
+                    ($is_valid, $products) = $constraint_function->($value, $arg, $self);
+                };
                 
-                croak $@ if $@;
+                croak "Constraint exception(Key '$product_key'). Error message: $@\n"
+                  if $@;
                 
                 $value = $products if $is_valid && defined $products;
             }
@@ -172,8 +178,7 @@ sub validate {
     return $result;
 }
 
-my $SYNTAX_OF_VALIDATION_RULE = <<'EOS';
-
+sub syntax {return <<'EOS' }
 ### Syntax of validation rule         
 my $validation_rule = [               # 1.Validation rule must be array ref
     key1 => [                         # 2.Constraints must be array ref
@@ -209,7 +214,7 @@ EOS
 sub _validation_rule_usage {
     my ($self, $validation_rule) = @_;
     
-    my $message = $SYNTAX_OF_VALIDATION_RULE;
+    my $message = $self->syntax;
     
     require Data::Dumper;
     $message .= "### Your validation rule:\n";
@@ -253,7 +258,7 @@ Validator::Custom - Custom validator
 
 =head1 Version
 
-Version 0.0606
+Version 0.0607
 
 =head1 Synopsis
     
@@ -465,6 +470,13 @@ You can merge multi custom class
         Validator::Custom::Yours1->constraints,
         Validator::Custom::Yours2->constraints
     );
+
+=head2 syntax
+
+    # get validation rule syntax
+    $syntax = $self->syntax;
+
+You can see syntax of validation rule using this method
 
 =head1 Object methods
 

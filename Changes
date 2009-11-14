@@ -1,3 +1,6 @@
+0.0607
+  improve error message
+  add syntax method for seeing validation rule syntax
 0.0606
   improve error message
   delete Validator::Custom::Result errors_to method (not backword compatible)
