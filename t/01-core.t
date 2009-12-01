@@ -251,7 +251,17 @@ use T1;
     isa_ok($r->products->{k10}, 'T5');
     isa_ok($r->products->{k11}->[0], 'T5');
     isa_ok($r->products->{k11}->[1], 'T5');
+
+    $hash = {k5 => 5, k6 => 6};
+    $validation_rule = [
+        [qw/k5 k6/] => [
+            [{'C3' => [5]}, 'k5 k6 Error']
+        ]
+    ];
     
+    $r = $o->validate($hash, $validation_rule);
+    ok(!$r->is_valid, 'corelative invalid_keys');
+    is(scalar @{$r->invalid_keys}, 1, 'corelative invalid_keys');
 }
 
 {
