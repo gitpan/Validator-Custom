@@ -1,16 +1,13 @@
 package Validator::Custom;
 use Object::Simple;
 
-our $VERSION = '0.0608';
+our $VERSION = '0.0701';
 
 use strict;
 use warnings;
 use Carp 'croak';
 
 use Validator::Custom::Result;
-
-
-### Class methods
 
 # Get constraint functions
 sub constraints : ClassObjectAttr {
@@ -26,9 +23,10 @@ sub constraints : ClassObjectAttr {
 sub add_constraint {
     my $invocant = shift;
     
-    my %old_constraints = $invocant->constraints;
-    my %new_constraints = ref $_[0] eq 'HASH' ? %{$_[0]} : @_;
-    $invocant->constraints(%old_constraints, %new_constraints);
+    my $constraints = ref $_[0] eq 'HASH' ? $_[0] : {@_};
+    $invocant->constraints(%{$invocant->constraints}, %$constraints);
+    
+    return $invocant;
 }
 
 ### Accessors
@@ -172,8 +170,9 @@ sub validate {
             unless($is_valid){
                 $products = undef;
                 
-                push @{$result->errors}, $error_message if defined $error_message;
-                push @{$result->invalid_keys}, $product_key;
+                # Resist error info
+                push @{$result->_errors},
+                     {invalid_key => $product_key, message => $error_message};
                 
                 last VALIDATOR_LOOP unless $error_stock;
                 next VALIDATOR_LOOP;

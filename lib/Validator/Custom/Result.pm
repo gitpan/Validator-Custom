@@ -1,19 +1,69 @@
 package Validator::Custom::Result;
 use Object::Simple;
 
-# Invalid keys
-sub invalid_keys : Attr   { type => 'array', default => sub{ [] }, deref => 1 }
+# Errors
+sub _errors : Attr   { type => 'array', default => sub {[]} }
 
-# Validation errors
-sub errors       : Attr   { type => 'array', default => sub{ [] }, deref => 1 }
+# Invalid keys 
+sub invalid_keys {
+    my $self = shift;
+    
+    # Extract invalid keys
+    my @invalid_keys;
+    foreach my $error (@{$self->_errors}) {
+        
+        push @invalid_keys, $error->{invalid_key};
+        
+    }
+    
+    return wantarray ? @invalid_keys : \@invalid_keys;
+}
+
+# Error messages
+sub errors {
+    my $self = shift;
+    
+    # Extract error messages
+    my @errors;
+    foreach my $error (@{$self->_errors}) {
+
+        push @errors, $error->{message} if defined $error->{message};
+        
+    }
+    
+    return wantarray ? @errors : \@errors;
+}
 
 # Resutls after conversion
-sub products     : Attr   { type => 'hash', default => sub{ {} }, deref => 1 }
+sub products     : Attr   { type => 'hash', default => sub{{}}, deref => 1 }
 
 # Check valid or not
 sub is_valid {
-    my $self = shift;
-    return @{$self->invalid_keys} ? 0 : 1;
+    my ($self, $key) = @_;
+    
+    # Nothing errors
+    return @{$self->invalid_keys} ? 0 : 1 unless defined $key;
+    
+    # Specified key is invalid
+    foreach my $error ($self->_errors) {
+        
+        return if $error->{invalid_key} eq $key;
+        
+    }
+    return 1;
+}
+
+# error message
+sub error {
+    my ($self, $key) = @_;
+    
+    foreach my $error ($self->_errors) {
+    
+        return $error->{message} if $error->{invalid_key} eq $key;
+    
+    }
+    
+    return;
 }
 
 # Build class
@@ -31,6 +81,9 @@ Validator::Custom::Result - Validator::Custom result object
     # Error message
     @errors = $result->errors;
     
+    # A Error message
+    $error = $result->error('title');
+    
     # Invalid keys
     @invalid_keys = $result->invalid_keys;
     
@@ -38,47 +91,54 @@ Validator::Custom::Result - Validator::Custom result object
     $products = $result->products;
     $product  = $products->{key1};
     
-    # Is it valid?
+    # Is it valid all?
     $is_valid = $result->is_valid;
+    
+    # Is it valid a value
+    $is_valid = $result->is_valid('title');
 
 =head1 Accessors
-
-=head2 errors
-
-You can get validation errors
-
-Set and get errors
-
-    $result = $result->errors($error);
-    
-    $errors = $result->errors
-    @errors = $result->errors
-
-=head2 invalid_keys
-
-Set and get invalid keys
-
-    $result       = $result->invalid_keys($invalid_keys);
-
-    @invalid_keys = $result->invalid_keys
-    $invalid_keys = $result->invalid_keys
 
 =head2 products
 
 Set and get producted values
 
     $result   = $result->products($products);
-    $products = $result->products
+    $products = $result->products;
 
-    $product = $products->{key}
+    $product = $products->{key};
 
 =head1 Methods
 
 =head2 is_valid
 
-Check if invalid_keys exsits or not
+Check if invalid_keys exsits
 
     $is_valid = $result->is_valid;
+
+You can specify a key to check if that key is invalid.
+
+    $is_valid = $result->is_valid('title');
+
+=head2 errors
+
+Get error messages
+
+    $errors = $result->errors;
+    @errors = $result->errors;
+
+=head2 error
+
+Get error message corresponding to a key.
+
+    $error = $result->error('title');
+
+=head2 invalid_keys
+
+Get invalid keys
+
+    @invalid_keys = $result->invalid_keys;
+    $invalid_keys = $result->invalid_keys;
 
 =head1 See also
 
