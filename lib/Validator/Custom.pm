@@ -1,7 +1,5 @@
 package Validator::Custom;
-use Object::Simple;
-
-our $VERSION = '0.0701';
+use base 'Object::Simple::Base';
 
 use strict;
 use warnings;
@@ -9,15 +7,13 @@ use Carp 'croak';
 
 use Validator::Custom::Result;
 
-# Get constraint functions
-sub constraints : ClassObjectAttr {
-    type => 'hash',
-    deref => 1,
-    initialize => {
-        clone   => 'hash',
-        default => sub { {} }
-    }
-}
+__PACKAGE__->hybrid_attr(constraints =>
+    type => 'hash', build => sub {{}}, clone => 'hash', deref => 1);
+
+__PACKAGE__->attr('validation_rule');
+__PACKAGE__->attr(error_stock => 1);
+
+### Methods
 
 # Add constraint function
 sub add_constraint {
@@ -28,16 +24,6 @@ sub add_constraint {
     
     return $invocant;
 }
-
-### Accessors
-
-# Validation rule
-sub validation_rule : Attr {}
-
-# Error is stock?
-sub error_stock  : Attr { default => 1 }
-
-### Methods
 
 # Validate
 sub validate {
@@ -228,23 +214,21 @@ sub _validation_rule_usage {
     return $message;
 }
 
-# Build class
-Object::Simple->build_class;
-
 =head1 NAME
 
 Validator::Custom - Custom validator
 
 =head1 VERSION
 
-Version 0.0608
+Version 0.0702
+
+=cut
+
+our $VERSION = '0.0702';
 
 =head1 SYNOPSYS
     
-    ### How to use Validator::Custom
-    
-    
-    # Validate
+    # New
     my $vc = Validator::Custom->new
     
     # Constraint
@@ -564,4 +548,4 @@ under the same terms as Perl itself.
 
 =cut
 
-1; # End of Validator::Custom
+1;
