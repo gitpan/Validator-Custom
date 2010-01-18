@@ -7,20 +7,17 @@ use Carp 'croak';
 
 use Validator::Custom::Result;
 
-my $p = __PACKAGE__;
+__PACKAGE__->attr('validation_rule');
+__PACKAGE__->attr(error_stock => 1);
 
-$p->attr('validation_rule')
-  ->attr(error_stock => 1);
-
-$p->hybrid_attr(constraints => (type  => 'hash', default => sub { {} },
-                                clone => 'hash', deref => 1));
+__PACKAGE__->dual_attr('constraints', default => sub { {} }, clone => 'hash');
 
 # Add constraint function
 sub add_constraint {
     my $invocant = shift;
     
     my $constraints = ref $_[0] eq 'HASH' ? $_[0] : {@_};
-    $invocant->constraints(%{$invocant->constraints}, %$constraints);
+    $invocant->constraints({%{$invocant->constraints}, %$constraints});
     
     return $invocant;
 }
@@ -220,11 +217,11 @@ Validator::Custom - Custom validator
 
 =head1 VERSION
 
-Version 0.0704
+Version 0.0705
 
 =cut
 
-our $VERSION = '0.0704';
+our $VERSION = '0.0705';
 
 =head1 SYNOPSYS
     

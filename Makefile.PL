@@ -8,7 +8,7 @@ WriteMakefile
           'VERSION_FROM' => 'lib/Validator/Custom.pm',
           'PREREQ_PM' => {
                            'Test::More' => 0,
-                           'Object::Simple' => '2.1101'
+                           'Object::Simple' => '2.1301'
                          }
         )
 ;
