@@ -10,7 +10,7 @@ use Validator::Custom::Result;
 __PACKAGE__->attr('validation_rule');
 __PACKAGE__->attr(error_stock => 1);
 
-__PACKAGE__->dual_attr('constraints', default => sub { {} }, clone => 'hash');
+__PACKAGE__->dual_attr('constraints', default => sub { {} }, inherit => 'hash');
 
 # Add constraint function
 sub add_constraint {
@@ -217,11 +217,11 @@ Validator::Custom - Custom validator
 
 =head1 VERSION
 
-Version 0.0705
+Version 0.0706
 
 =cut
 
-our $VERSION = '0.0705';
+our $VERSION = '0.0706';
 
 =head1 SYNOPSYS
     
