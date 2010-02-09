@@ -1,6 +1,6 @@
 ---
 name: Validator-Custom
-version: 0.0708
+version: 0.0801
 author:
   - 'Yuki Kimoto <kimoto.yuki@gmail.com>'
 abstract: Custom validator
@@ -14,7 +14,7 @@ build_requires:
 provides:
   Validator::Custom:
     file: lib/Validator/Custom.pm
-    version: 0.0708
+    version: 0.0801
   Validator::Custom::Result:
     file: lib/Validator/Custom/Result.pm
 generated_by: Module::Build version 0.31012
