@@ -1,9 +1,9 @@
 ---
 name: Validator-Custom
-version: 0.1202
+version: 0.1203
 author:
   - 'Yuki Kimoto <kimoto.yuki@gmail.com>'
-abstract: Data validator basic class
+abstract: Validates user input easily
 license: perl
 resources:
   license: ~
@@ -14,7 +14,7 @@ build_requires:
 provides:
   Validator::Custom:
     file: lib/Validator/Custom.pm
-    version: 0.1202
+    version: 0.1203
   Validator::Custom::Result:
     file: lib/Validator/Custom/Result.pm
 generated_by: Module::Build version 0.31012
