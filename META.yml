@@ -1,6 +1,6 @@
 ---
 name: Validator-Custom
-version: 0.1210
+version: 0.1211
 author:
   - 'Yuki Kimoto <kimoto.yuki@gmail.com>'
 abstract: Validates user input easily
@@ -14,7 +14,7 @@ build_requires:
 provides:
   Validator::Custom:
     file: lib/Validator/Custom.pm
-    version: 0.1210
+    version: 0.1211
   Validator::Custom::Basic::Constraints:
     file: lib/Validator/Custom/Basic/Constraints.pm
   Validator::Custom::Result:
