@@ -1,6 +1,6 @@
 package Validator::Custom;
 
-our $VERSION = '0.1401';
+our $VERSION = '0.1402';
 
 use 5.008001;
 use strict;
@@ -31,7 +31,7 @@ my $rule = [                              # 1. Rule is array ref
     key => [                           
         [{constraint => 'args'}, 'err']   # 4. With argument and message
     ],
-    {key => ['key1', 'key2']} => [        # 5. Multi-paramters validation
+    {key => ['key1', 'key2']} => [        # 5. Multi-parameters validation
         'constraint'
     ],
     key => [
@@ -390,11 +390,10 @@ Validator::Custom - Validates user input easily
 
 Basic usages
 
-    # Load module and create object
     use Validator::Custom;
     my $vc = Validator::Custom->new;
 
-    # Data used at validation
+    # Data
     my $data = {age => 19, name => 'Ken Suzuki'};
     
     # Rule
@@ -415,43 +414,19 @@ Basic usages
     my $result = $vc->validate($data, $rule);
 
 Result of validation
-
-    ### Validator::Custom::Result
-
-    my $result = $vc->validate($data, $rule);
     
-    # (experimental) Chacke if the result is valid.
-    my $is_ok = $result->is_ok;
+    # More than one parameter is missing
+    if ($result->has_missing) {
+        # Do something
+    }
     
-    # (experimental) Check the existence of missing parameter
-    my $has_missing_param = $result->has_missing
+    # More than one parameter is invalid
+    elsif ($result->has_invalid) {
+        # Do someting
+    }
     
-    # (experimental) Missing parameters
-    my $missing_params = $result->missing_params;
-    
-    # (experimental) Chack if the data has invalid parameter
-    my $has_invalid = $resutl->has_invalid;
-    
-    # Invalid parameter names
-    my $invalid_params = $result->invalid_params;
-    
-    # Invalid rule keys
-    my $invalid_rule_keys = $result->invalid_rule_keys;
-
-    # Error messages
-    my $messages = $result->messages;
-
-    # Error messages to hash ref
-    my $messages_hash = $result->message_to_hash;
-    
-    # A error message
-    my $message = $result->message('title');
-    
-    # Raw data
-    my $raw_data = $result->raw_data;
-    
-    # Result data
-    my $result_data = $result->data;
+    my $title_is_valid = $result->is_valid('title');
+    my $title_message  = $result->message('title');
     
 Advanced features
 
@@ -550,7 +525,7 @@ L<Validator::Custom> validates user input.
 =item *
 
 Can set a message for each parameter. the messages is added to
-the result when the paramter is invalid. the messages keeps the order.
+the result when the parameter is invalid. the messages keeps the order.
 
 =item *
 
@@ -564,7 +539,7 @@ Can create original class, extending Validator::Custom
 
 =item *
 
-Support multi-paramters validation, multi-values validation,
+Support multi-parameters validation, multi-values validation,
 OR condition validation, negative validation.
 
 =back
@@ -631,65 +606,33 @@ Validate the data. validate() return L<Validator::Custom::Result> object.
 =head2 3. Result of validation
 
 L<Validator::Custom::Result> object has the result of validation.
-
-Check if the data is ok.
-    
-    my $is_ok = $result->is_ok;
-
-Error messages
-    
-    # Error messages
-    my $messages = $result->messages;
-
-    # Error messages to hash ref
-    my $messages_hash = $result->messages_to_hash;
-    
-    # A error message
-    my $message = $result->message('age');
-
-Check if data has missing paremeters
-
-    # Check if the data has missing parameter
-    my $has_missing = $result->has_missing;
-    
-    # Missing parameters
-    my $missing_params = $result->missing_params;
-
-Invalid parameter names and invalid result keys
-
-    # Check if the data has invalid paramters
-    my $has_invalid = $result->has_invalid;
-    
-    # Invalid parameter names
-    my $invalid_params = $result->invalid_params;
-    
-    # Invalid rule keys
-    my $invalid_rule_keys = $result->invalid_rule_keys;
-
-Raw data and result data
-
-    # Raw data
-    my $raw_data = $result->raw_data;
-    
-    # Result data
-    my $result_data = $result->data;
+See L<Validator::Custom::Result> in detail.
 
 B<Examples:>
 
-Check the result and get error messages.
-
-    unless ($result->is_ok) {
-        my $messages = $result->messages;
+Check if the data has missing parameter and invalid parameter.
+and print message unless the parameter is valid.
+    
+    if ($result->has_missing) {
+        # ...
+    }
+    elsif ($result->has_invalid) {
         
-        # Do something
+        print $result->message('title')
+          unless $result->is_valid('title');
+        
+        print $result->message('author')
+          unless $result->is_valid('author');
     }
 
-Check the result and get error messages as hash reference
+Get all message
 
-    unless ($result->is_ok) {
-        my $messages = $result->messages_to_hash;
-
-        # Do something
+    if ($result->has_missing) {
+        # ...
+    }
+    elsif ($result->has_invalid) {
+        
+        my $messages = $result->messages;
     }
 
 Combination with L<HTML::FillInForm>
@@ -803,7 +746,7 @@ Message when the result has invalid parameter
 
 =item 2. default
 
-default value. This value is set if the result has missing paramter or has invalid paramter.
+default value. This value is set if the result has missing parameter or has invalid parameter.
 
     {default => 5}
 
@@ -815,9 +758,9 @@ the value is copied to result's data or not. default to 1.
 
 =back
 
-=head3 C<Multi-paramters validation>
+=head3 C<Multi-parameters validation>
 
-Multi-paramters validation is available.
+Multi-parameters validation is available.
 
     $data = {password1 => 'xxx', password2 => 'xxx'};
 
@@ -833,7 +776,7 @@ Multi-paramters validation is available.
 =head3 C<Multi-values validation>
 
 Multi-values validation is available
-if the paramter value is array reference.
+if the parameter value is array reference.
 Add "@" mark before constraint name.
 
     $data = {
@@ -849,7 +792,7 @@ Add "@" mark before constraint name.
 =head3 C<Validation of OR condition>
 
 OR condition validation is available.
-Write paramter name repeatedly.
+Write parameter name repeatedly.
 
     $rule = [
         email => [
@@ -861,7 +804,7 @@ Write paramter name repeatedly.
         ]
     ];
 
-=head3 (experimanetal) C<Negative validation> 
+=head3 C<Negative validation> 
 
 You can negativate a constraint function
 by adding '!' to the constraint name.
@@ -874,7 +817,7 @@ by adding '!' to the constraint name.
 
 This means that "age" is B<not> int.
 
-You can also combine this and Multi-paramters validation
+You can also combine this and Multi-parameters validation
 
     $rule = [
         ages => [
@@ -955,7 +898,7 @@ In this example, argument is I<[1, 5]>.
 
 And this function must return a value to check if the value is valid.
 
-In Multi-paramters validation, values is packed to array reference,
+In Multi-parameters validation, values is packed to array reference,
 value is ['xxx', 'xxx'].
 
     $data = {password1 => 'xxx', password2 => 'xxx'};
@@ -1081,7 +1024,7 @@ Validation rule has the following syntax.
         key => [                           
             [{constraint => 'args'}, 'err']   # 4. With argument and message
         ],
-        {key => ['key1', 'key2']} => [        # 5. Multi-paramters validation
+        {key => ['key1', 'key2']} => [        # 5. Multi-parameters validation
             'constraint'
         ],
         key => [

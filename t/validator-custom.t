@@ -1,5 +1,5 @@
-#use Test::More tests => 119;
-use Test::More 'no_plan';
+use Test::More tests => 131;
+#use Test::More 'no_plan';
 
 use strict;
 use warnings;
@@ -256,7 +256,8 @@ use T1;
     ];
     
     $result= $vc->validate($data, $rule);
-    ok(!$result->is_ok, 'corelative invalid_keys');
+    local $SIG{__WARN__} = sub {};
+    ok(!$result->is_valid, 'corelative invalid_keys');
     is(scalar @{$result->invalid_keys}, 1, 'corelative invalid_keys');
 }
 
@@ -1383,3 +1384,22 @@ $vc->error_stock(0);
 $result = $vc->validate($data, $rule);
 is_deeply($result->messages, ['e1'], $test);
 
+
+test 'is_valid';
+$data = {key1 => 'a', key2 => 'b', key3 => 2};
+$rule = [
+    key1 => [
+        'int'
+    ],
+    key2 => [
+        'int'
+    ],
+    key3 => [
+        'int'
+    ]
+];
+$vc = Validator::Custom->new;
+$result = $vc->validate($data, $rule);
+ok(!$result->is_valid('key1'), "$test : 1");
+ok(!$result->is_valid('key2'), "$test : 2");
+ok($result->is_valid('key3'), "$test : 3");
