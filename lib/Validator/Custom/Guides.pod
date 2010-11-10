@@ -388,19 +388,23 @@ and converted value.
 
 =head2 5. Extending
 
-Validator::Custom is easy to extend. You can register constraint
-to Your class by register_constraint().
+Validator::Custom is easy to extend. To register constarint,
+use C<register constraint> in constructor.
     
     package YourValidator;
     use base 'Validator::Custom';
     
-    __PACKAGE__->register_constraint(
-        defined  => sub { defined $_[0] }
-    );
+    sub new {
+        my $self = shift->SUPER::new(@_);
+        $self->register_constraint(
+            defined  => sub { defined $_[0] }
+        );
+        return $self;
+    }
     
     1;
     
-L<Validator::Custom::Trim>, L<Validator::Custom::HTMLForm> is good examples.
+L<Validator::Custom::HTMLForm> is good examples.
 
 =head2 6. Advanced features
 
@@ -429,5 +433,15 @@ the invalid value is found. If you set error_stock to 0, Validation is
 finished soon after invalid value is found.
 
     $vc->error_stock(0);
+
+=head2 DEPRECATED METHODS
+
+These attributes and methods are deprecated.
+
+C<error_infos>, C<add_error_info>, C<errors>, C<error>,
+C<errors_to_hash>, C<invalid_keys>, C<remove_error_info>
+
+If you see the description of these methods,
+see document older than 0.1403.
 
 =cut

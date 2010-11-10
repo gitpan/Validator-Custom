@@ -1,25 +1,20 @@
----
-name: Validator-Custom
-version: 0.1403
-author:
-  - 'Yuki Kimoto <kimoto.yuki@gmail.com>'
-abstract: Validates user input easily
-license: perl
-resources:
-  license: ~
+--- #YAML:1.0
+name:               Validator-Custom
+version:            0.1404
+abstract:           ~
+author:  []
+license:            unknown
+distribution_type:  module
+configure_requires:
+    ExtUtils::MakeMaker:  0
 requires:
-  Object::Simple: 3.0302
-build_requires:
-  Test::More: 0
-provides:
-  Validator::Custom:
-    file: lib/Validator/Custom.pm
-    version: 0.1403
-  Validator::Custom::Basic::Constraints:
-    file: lib/Validator/Custom/Basic/Constraints.pm
-  Validator::Custom::Result:
-    file: lib/Validator/Custom/Result.pm
-generated_by: Module::Build version 0.31012
+    Object::Simple:  3.0302
+    Test::More:      0
+no_index:
+    directory:
+        - t
+        - inc
+generated_by:       ExtUtils::MakeMaker version 6.48
 meta-spec:
-  url: http://module-build.sourceforge.net/META-spec-v1.2.html
-  version: 1.2
+    url:      http://module-build.sourceforge.net/META-spec-v1.4.html
+    version:  1.4
