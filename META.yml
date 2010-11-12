@@ -1,15 +1,15 @@
 --- #YAML:1.0
 name:               Validator-Custom
-version:            0.1404
-abstract:           ~
-author:  []
-license:            unknown
+version:            0.1405
+abstract:           Validates user input easily
+author:
+    - Yuki Kimoto <kimoto.yuki@gmail.com>
+license:            perl
 distribution_type:  module
 configure_requires:
     ExtUtils::MakeMaker:  0
 requires:
-    Object::Simple:  3.0302
-    Test::More:      0
+    Test::More:  0
 no_index:
     directory:
         - t
