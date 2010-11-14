@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               Validator-Custom
-version:            0.1406
+version:            0.1407
 abstract:           Validates user input easily
 author:
     - Yuki Kimoto <kimoto.yuki@gmail.com>

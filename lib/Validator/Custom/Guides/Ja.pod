@@ -2,7 +2,7 @@
 
 =head1 NAME
 
-Validator::Custom::Guides - Validator::Customの日本語ガイド
+Validator::Custom::Guides::Ja - Validator::Customの日本語ガイド
 
 =head1 ガイド
 
