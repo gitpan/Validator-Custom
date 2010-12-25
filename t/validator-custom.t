@@ -1,4 +1,4 @@
-use Test::More tests => 138;
+use Test::More tests => 139;
 #use Test::More 'no_plan';
 
 use strict;
@@ -1406,6 +1406,7 @@ ok(!$result->is_valid('key1'), "$test : 1");
 ok(!$result->is_valid('key2'), "$test : 2");
 ok($result->is_valid('key3'), "$test : 3");
 
+
 test 'merge';
 $data = {key1 => 'a', key2 => 'b', key3 => 'c'};
 $rule = [
@@ -1432,6 +1433,7 @@ ok(index($value, 'b') > -1, "$test : 2");
 ok(index($value, 'c') > -1, "$test : 3");
 ok(index($value, 'd') == -1, "$test : 4");
 
+
 test 'or condtioon new syntax';
 $data = {key1 => '3', key2 => '', key3 => 'a'};
 $rule = [
@@ -1449,6 +1451,7 @@ $vc = Validator::Custom->new;
 $result = $vc->validate($data, $rule);
 is_deeply($result->invalid_rule_keys, ['key3']);
 
+
 test 'or condtioon new syntax';
 $data = {key1 => '3', key2 => '', key3 => 'a'};
 $rule = [
@@ -1465,4 +1468,23 @@ $rule = [
 $vc = Validator::Custom->new;
 $result = $vc->validate($data, $rule);
 is_deeply($result->invalid_rule_keys, ['key1']);
+
+
+test 'space';
+$data = {key1 => '', key2 => ' ', key3 => 'a'};
+$rule = [
+    key1 => [
+        'space'
+    ],
+    key2 => [
+        'space'
+    ],
+    key3 => [
+        'space'
+    ],
+];
+$vc = Validator::Custom->new;
+$result = $vc->validate($data, $rule);
+is_deeply($result->invalid_rule_keys, ['key3'], $test);
+
 
