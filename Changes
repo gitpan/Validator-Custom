@@ -1,3 +1,8 @@
+0.1408
+  updated document
+  (experimental) added merge filter
+  deprecated shared_rule attribute
+  (experimental)improved "or" condition validation syntax
 0.1407
   fixed document
 0.1406

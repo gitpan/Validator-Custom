@@ -2,7 +2,7 @@
 
 =head1 NAME
 
-Validator::Custom::Guides::Ja - Validator::Customの日本語ガイド
+Validator::Custom::Guides - Validator::Customの日本語ガイド
 
 =head1 ガイド
 
@@ -265,15 +265,11 @@ B<サンプル:>
 =head3 C<OR条件によるバリデーション>
 
 OR条件によるバリデーションが利用できます。
-パラメータ名を繰り返し書いてください。
+C<||>を使ってください。
 
     $rule = [
         email => [
-            'blank'
-        ],
-        email => [
-            'not_blank',
-            'emai_address'
+            'blank || email'
         ]
     ];
 
@@ -296,18 +292,6 @@ OR条件によるバリデーションが利用できます。
             '@!int';
         ]
     ];
-
-=head3 C<ルールの共有>
-
-すべてのパラメータでルールを共有することができます。
-共有ルールは制約表現のそれぞれのリストの先頭に
-追加されます。
-
-    $vc->shared_rule([
-        ['defined',   'Must be defined'],
-        ['trim'],
-        ['not_blank', 'Must be not blank']
-    ]);
 
 =head2 4. 制約関数の仕様
 

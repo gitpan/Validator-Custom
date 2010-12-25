@@ -1,4 +1,4 @@
-use Test::More tests => 131;
+use Test::More tests => 138;
 #use Test::More 'no_plan';
 
 use strict;
@@ -7,6 +7,8 @@ use lib 't/validator-custom';
 
 my $test;
 sub test {$test = shift}
+
+my $value;
 
 use Validator::Custom;
 
@@ -57,7 +59,7 @@ our $DEFAULT_MESSAGE = $Validator::Custom::Result::DEFAULT_MESSAGE;
 
 {
     eval{Validator::Custom->new->validate({k => 1}, [ k => [['===', 'error']]])->validate};
-    like($@, qr/\QConstraint type '===' must be [A-Za-z0-9_]/, 'constraint invalid name')
+    like($@, qr/\QConstraint name '===' must be [A-Za-z0-9_]/, 'constraint invalid name')
 }
 
 use T1;
@@ -122,9 +124,9 @@ use T1;
         k1 => [
             ['No', "k1Error1"],
         ],
-    ];    
+    ];
     eval{T1->new->validate($data, $rule)};
-    like($@, qr/'No' is not registered/, 'no custom type');
+    like($@, qr/"No" is not registered/, 'no custom type');
 }
 
 {
@@ -1403,3 +1405,64 @@ $result = $vc->validate($data, $rule);
 ok(!$result->is_valid('key1'), "$test : 1");
 ok(!$result->is_valid('key2'), "$test : 2");
 ok($result->is_valid('key3'), "$test : 3");
+
+test 'merge';
+$data = {key1 => 'a', key2 => 'b', key3 => 'c'};
+$rule = [
+    {key => ['key1', 'key2', 'key3']} => [
+        'merge'
+    ],
+];
+$vc = Validator::Custom->new;
+$result = $vc->validate($data, $rule);
+is($result->data->{key}, 'abc', $test);
+
+test 'Multi-Paramater validation using regex';
+$data = {key1 => 'a', key2 => 'b', key3 => 'c', p => 'd'};
+$rule = [
+    {key => qr/^key/} => [
+        'merge'
+    ],
+];
+$vc = Validator::Custom->new;
+$result = $vc->validate($data, $rule);
+$value = $result->data->{key};
+ok(index($value, 'a') > -1, "$test : 1");
+ok(index($value, 'b') > -1, "$test : 2");
+ok(index($value, 'c') > -1, "$test : 3");
+ok(index($value, 'd') == -1, "$test : 4");
+
+test 'or condtioon new syntax';
+$data = {key1 => '3', key2 => '', key3 => 'a'};
+$rule = [
+    key1 => [
+        'blank || int'
+    ],
+    key2 => [
+        'blank || int'
+    ],
+    key3 => [
+        'blank || int'
+    ],
+];
+$vc = Validator::Custom->new;
+$result = $vc->validate($data, $rule);
+is_deeply($result->invalid_rule_keys, ['key3']);
+
+test 'or condtioon new syntax';
+$data = {key1 => '3', key2 => '', key3 => 'a'};
+$rule = [
+    key1 => [
+        'blank || !int'
+    ],
+    key2 => [
+        'blank || !int'
+    ],
+    key3 => [
+        'blank || !int'
+    ],
+];
+$vc = Validator::Custom->new;
+$result = $vc->validate($data, $rule);
+is_deeply($result->invalid_rule_keys, ['key1']);
+
