@@ -1,6 +1,6 @@
 package Validator::Custom;
 
-our $VERSION = '0.1409';
+our $VERSION = '0.1410';
 
 use 5.008001;
 use strict;
@@ -222,7 +222,10 @@ sub validate {
         push @$constraints, @$shared_rule;
         
         # Validation
-        my $value;
+        my $value = @$keys > 1
+                  ? [map { $data->{$_} } @$keys]
+                  : $data->{$keys->[0]};
+
         foreach my $constraint (@$constraints) {
             
             # Arrange constraint information
@@ -243,14 +246,14 @@ sub validate {
             }
             
             # Constraint function
-            my $cfunc;
+            my $cfuncs;
             my $negative;
             
             # Sub reference
             if( ref $constraint eq 'CODE') {
                 
                 # Constraint function
-                $cfunc = $constraint;
+                $cfuncs = [$constraint];
             }
             
             # Constraint key
@@ -261,7 +264,7 @@ sub validate {
                 $data_type->{array} = 1 if $cinfo->{array};
                                                 
                 # Constraint function
-                $cfunc = $cinfo->{func};
+                $cfuncs = $cinfo->{funcs};
             }
             
             # Is valid?
@@ -270,61 +273,55 @@ sub validate {
             # Data is array
             if($data_type->{array}) {
                 
-                # Set value
-                unless (defined $value) {
-                    $value = ref $data->{$keys->[0]} eq 'ARRAY' 
-                           ? $data->{$keys->[0]}
-                           : [$data->{$keys->[0]}]
-                }
+                # To array
+                $value = [$value] unless ref $value eq 'ARRAY';
                 
                 # Validation loop
-                my $elements;
-                foreach my $data (@$value) {
-                    
-                    # Array element
-                    my $element;
+                for (my $i = 0; $i < @$value; $i++) {
+                    my $data = $value->[$i];
                     
                     # Validation
-                    my $cresult
-                      = $cfunc->($data, $arg, $self);
-                    
-                    # Constrint result
-                    if (ref $cresult eq 'ARRAY') {
-                        ($is_valid, $element) = @$cresult;
+                    for (my $k = 0; $k < @$cfuncs; $k++) {
+                        my $cfunc = $cfuncs->[$k];
                         
-                        $elements ||= [];
-                        push @$elements, $element;
-                    }
-                    else {
-                        $is_valid = $cresult;
+                        # Validate
+                        my $cresult = $cfunc->($data, $arg, $self);
+                        
+                        # Constrint result
+                        my $v;
+                        if (ref $cresult eq 'ARRAY') {
+                            ($is_valid, $v) = @$cresult;
+                            $value->[$i] = $v;
+                        }
+                        else {
+                            $is_valid = $cresult;
+                        }
+                        
+                        last if $is_valid;
                     }
                     
                     # Validation error
                     last unless $is_valid;
                 }
-                
-                # Update value
-                $value = $elements if $elements;
             }
             
             # Data is scalar
             else {
-                
-                # Set value
-                $value = @$keys > 1
-                       ? [map { $data->{$_} } @$keys]
-                       : $data->{$keys->[0]}
-                  unless defined $value;
-                
+
                 # Validation
-                my $cresult
-                  = $cfunc->($value, $arg, $self);
-                
-                if (ref $cresult eq 'ARRAY') {
-                    ($is_valid, $value) = @$cresult;
-                }
-                else {
-                    $is_valid = $cresult;
+                foreach my $cfunc (@$cfuncs) {
+                    my $cresult = $cfunc->($value, $arg, $self);
+                    
+                    if (ref $cresult eq 'ARRAY') {
+                        my $v;
+                        ($is_valid, $v) = @$cresult;
+                        $value = $v if $is_valid;
+                    }
+                    else {
+                        $is_valid = $cresult;
+                    }
+                    
+                    last if $is_valid;
                 }
             }
             
@@ -380,6 +377,16 @@ sub _parse_constraint {
     # Constraint infomation
     my $cinfo = {};
     
+    # Simple constraint name
+    unless ($constraint =~ /\W/) {
+        my $cfunc = $self->constraints->{$constraint} || '';
+        croak qq{"$constraint" is not registered}
+          unless ref $cfunc eq 'CODE';
+        
+        $cinfo->{funcs} = [$cfunc];
+        return $cinfo;
+    }
+
     # Trim space
     $constraint ||= '';
     $constraint =~ s/^\s+//;
@@ -421,22 +428,23 @@ sub _parse_constraint {
           unless ref $cfunc eq 'CODE';
         
         # Negativate
-        my $f = $negative ? sub { ! $cfunc->(@_) } : $cfunc;
+        my $f = $negative ? sub {
+            my $ret = $cfunc->(@_);
+            
+            if (ref $ret eq 'ARRAY') {
+                $ret->[0] = ! $ret->[0];
+                return $ret;
+            }
+            else {
+                return ! $ret;
+            }
+        } : $cfunc;
         
         # Add
         push @cfuncs, $f;
     }
     
-    # Merge function
-    croak qq{Not support "or" validation more than three}
-      if @cfuncs > 3;
-    
-    $cinfo->{func} = @cfuncs == 1 ? $cfuncs[0]
-                   : @cfuncs == 2 ? sub {$cfuncs[0]->(@_) || $cfuncs[1]->(@_)}
-                   : @cfuncs == 3 ? sub {$cfuncs[0]->(@_) ||
-                                         $cfuncs[1]->(@_) ||
-                                         $cfuncs[2]->(@_)}
-                   : sub { return $_[0] };
+    $cinfo->{funcs} = \@cfuncs;
     
     return $cinfo;
 }
