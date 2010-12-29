@@ -1,4 +1,3 @@
-Build.PL
 Changes
 lib/Validator/Custom.pm
 lib/Validator/Custom/Basic/Constraints.pm
@@ -12,6 +11,7 @@ t/00-load.t
 t/boilerplate.t
 t/pod-coverage.t
 t/pod.t
+t/validator-custom-require-json.t
 t/validator-custom.t
 t/validator-custom/T1.pm
 t/validator-custom/T2.pm
@@ -19,5 +19,4 @@ t/validator-custom/T3.pm
 t/validator-custom/T4.pm
 t/validator-custom/T5.pm
 t/validator-custom/T6.pm
-Validator-Custom-0.1406/META.yml
 META.yml                                 Module meta-data (added by MakeMaker)
