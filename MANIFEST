@@ -11,7 +11,8 @@ t/00-load.t
 t/boilerplate.t
 t/pod-coverage.t
 t/pod.t
-t/validator-custom-require-json.t
+t/validator-custom-required-json.t
+t/validator-custom-required-timepiece.t
 t/validator-custom.t
 t/validator-custom/T1.pm
 t/validator-custom/T2.pm

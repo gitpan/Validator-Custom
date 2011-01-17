@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               Validator-Custom
-version:            0.1414
+version:            0.1415
 abstract:           Validates user input easily
 author:
     - Yuki Kimoto <kimoto.yuki@gmail.com>
@@ -11,7 +11,7 @@ configure_requires:
 build_requires:
     ExtUtils::MakeMaker:  0
 requires:
-    Object::Simple:  3.0302
+    Object::Simple:  3.0616
     Test::More:      0
 no_index:
     directory:
