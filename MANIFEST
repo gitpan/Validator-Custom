@@ -1,8 +1,8 @@
 Changes
 lib/Validator/Custom.pm
-lib/Validator/Custom/Basic/Constraints.pm
-lib/Validator/Custom/Guides.pod
-lib/Validator/Custom/Guildes/Ja.pod
+lib/Validator/Custom/Constraint.pm
+lib/Validator/Custom/Guide.pod
+lib/Validator/Custom/Guide/Ja.pod
 lib/Validator/Custom/Result.pm
 Makefile.PL
 MANIFEST			This list of files
