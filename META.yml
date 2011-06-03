@@ -1,7 +1,7 @@
 --- #YAML:1.0
 name:               Validator-Custom
-version:            0.1422
-abstract:           Validates user input easily
+version:            0.1424
+abstract:           Validate user input easily
 author:
     - Yuki Kimoto <kimoto.yuki@gmail.com>
 license:            perl
