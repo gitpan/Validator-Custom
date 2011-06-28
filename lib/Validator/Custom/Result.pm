@@ -1,16 +1,12 @@
 package Validator::Custom::Result;
-
-use strict;
-use warnings;
-
-use base 'Object::Simple';
+use Object::Simple -base;
 
 use Carp 'croak';
 
 # Attrbutes
-__PACKAGE__->attr(data           => sub { {} });
-__PACKAGE__->attr(missing_params => sub { [] });
-__PACKAGE__->attr(raw_data       => sub { {} });
+has data => sub { {} },
+    missing_params => sub { [] },
+    raw_data  => sub { {} };
 
 # Default message
 our $DEFAULT_MESSAGE = 'Error message not specified';
@@ -81,6 +77,11 @@ sub is_ok {
     return !$self->has_invalid && !$self->has_missing ? 1 : 0;
 }
 
+sub loose_data {
+    my $self = shift;
+    return {%{$self->raw_data}, %{$self->data}};
+}
+
 sub message {
     my ($self, $name) = @_;
     
@@ -136,41 +137,47 @@ sub to_hash {
     return $result;
 }
 
-### Deprecated attributes and methods
-
-__PACKAGE__->attr(error_infos    => sub { {} });
+# DEPRECATED!
+has error_infos => sub { {} };
+# DEPRECATED!
 sub add_error_info {
     my $self = shift;
-    
+    warn "add_error_info method is DEPRECATED!";
     # Merge
     my $error_infos = ref $_[0] eq 'HASH' ? $_[0] : {@_};
     $self->error_infos({%{$self->error_infos}, %$error_infos});
-    
     return $self;
 }
-
-sub error { shift->message(@_) }
-
+# DEPRECATED!
+sub error {
+    warn "error_info method is DEPRECATED!";
+    shift->message(@_)
+}
+# DEPRECATED!
 sub errors { 
+    warn "errors method is DEPRECATED!";
     return wantarray
          ? @{shift->messages(@_)}
          : shift->messages(@_);
 }
-
-sub errors_to_hash { shift->messages_to_hash(@_) }
-
+# DEPRECATED!
+sub errors_to_hash {
+    warn "errors_to_hash method is DEPRECATED!";
+    shift->messages_to_hash(@_)
+}
+# DEPRECATED!
 sub invalid_keys {
+    warn "invalid_keys method is DEPRECATED!";
     return wantarray
          ? @{shift->invalid_rule_keys(@_)}
          : shift->invalid_rule_keys(@_);
 }
-
+# DEPRECATED!
 sub remove_error_info {
     my ($self, $key) = @_;
-    
+    warn "remove_error_info method is DEPRECATED!";
     # Remove
     delete $self->error_infos->{$key};
-    
     return $self;
 }
 
@@ -304,6 +311,15 @@ names specified in the rule is found in the data.
     my $title_is_valid = $result->is_valid('title');
 
 Check if one paramter is valid.
+
+=head2 C<loose_data> EXPERIMENTAL
+
+    my $loose_data = $result->loose_data;
+
+Loose data, which is data merged C<raw_data> and C<data>
+
+    # Loose data
+    {%{$self->raw_data}, %{$self->data}}
 
 =head2 C<message>
 

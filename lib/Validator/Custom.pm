@@ -1,26 +1,16 @@
 package Validator::Custom;
-
-our $VERSION = '0.1424';
-
+use Object::Simple -base;
 use 5.008001;
-use strict;
-use warnings;
-
-use base 'Object::Simple';
+our $VERSION = '0.1425';
 
 use Carp 'croak';
 use Validator::Custom::Constraint;
 use Validator::Custom::Result;
 
-# Object::Simple "dual_attr" is deprecated. Don't use "dual_attr".
-# I rest this for the promiss of keeping backword compatible.
-__PACKAGE__->dual_attr('constraints', default => sub { {} },
-                                      inherit => 'hash_copy');
-__PACKAGE__->attr('data_filter');
-__PACKAGE__->attr(error_stock => 1);
-__PACKAGE__->attr('rule');
+has ['data_filter', 'rule'],
+    error_stock => 1;
 
-__PACKAGE__->attr(syntax => <<'EOS');
+has syntax => <<'EOS';
 ### Syntax of validation rule
 my $rule = [                              # 1 Rule is array ref
     key => [                              # 2 Constraints is array ref
@@ -340,7 +330,9 @@ sub validate {
             }
         }
         if ($found_missing_param) {
-            $result->data->{$result_key} = $opts->{default}
+            $result->data->{$result_key} = ref $opts->{default} eq 'CODE'
+                                         ? $opts->{default}->($self)
+                                         : $opts->{default}
               if exists $opts->{default} && $copy;
             next;
         }
@@ -469,7 +461,9 @@ sub validate {
                   unless exists $result->{_error_infos}->{$result_key};
                 
                 # Set default value
-                $result->data->{$result_key} = $opts->{default}
+                $result->data->{$result_key} = ref $opts->{default} eq 'CODE'
+                                             ? $opts->{default}->($self)
+                                             : $opts->{default}
                   if exists $opts->{default} && $copy;
                 
                 # No Error strock
@@ -671,8 +665,10 @@ sub _rule_syntax {
 }
 
 # DEPRECATED!
-__PACKAGE__->attr(shared_rule => sub { [] });
-
+has shared_rule => sub { [] };
+# DEPRECATED!
+__PACKAGE__->dual_attr('constraints', default => sub { {} },
+                                      inherit => 'hash_copy');
 1;
 
 =head1 NAME
@@ -712,6 +708,10 @@ Validator::Custom - Validate user input easily
             my $messages = $result->messages_to_hash;
         }
     }
+    my $valid_data = $result->data;
+    my $raw_data = $result->raw_data;
+    my $loose_data = $result->loose_data;
+
     
 =head1 DESCRIPTION
 
@@ -1316,11 +1316,41 @@ Trim leading white space.
 
 Trim trailing white space.
 
-=head1 STABILITY
+=head1 DEPRECATED FUNCTIONALITIES
 
-All methods in these documentations
-(except for EXPERIMENTAL marking ones)
-keep backword compatible in the future.
+L<Validator::Custom>
+    
+    # Atrribute methods
+    shared_rule # Removed at 2017/1/1
+    
+    # Methods
+    __PACKAGE__->constraints(...); # Call constraints method as class method
+                                   # Removed at 2017/1/1
+L<Validator::Custom::Result>
+
+    # Attribute methods
+    error_infos # Removed at 2017/1/1 
+
+    # Methods
+    add_error_info # Removed at 2017/1/1
+    error # Removed at 2017/1/1
+    errors # Removed at 2017/1/1
+    errors_to_hash # Removed at 2017/1/1
+    invalid_keys # Removed at 2017/1/1
+    remove_error_info# Removed at 2017/1/1
+
+=head1 BACKWORD COMPATIBLE POLICY
+
+If a functionality is DEPRECATED, you can know it by DEPRECATED warnings
+except for attribute method.
+You can check all DEPRECATED functionalities by document.
+DEPRECATED functionality is removed after five years,
+but if at least one person use the functionality and tell me that thing
+I extend one year each time you tell me it.
+
+EXPERIMENTAL functionality will be changed without warnings.
+
+This policy is changed at 2011/6/28
 
 =head1 AUTHOR
 
