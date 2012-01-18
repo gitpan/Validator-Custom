@@ -1,28 +1,29 @@
+0.1426
+  - improved undefined value validation
+  - removed EXPERIMETAL status from Validator::Custom::Result::loose_data method
 0.1425
-    - added EXPERIMENTAL Validator::Custom::Result loose_data method
-    - can set code reference to rule default option to get data at read time.
-    - changed backword compatible policy
-      ------------------------------------------------------------------------
-      If a functionality is DEPRECATED, you can know it by DEPRECATED warnings
-      except for attribute method.
-      You can check all DEPRECATED functionalities by document.
-      DEPRECATED functionality is removed after five years,
-      but if at least one person use the functionality and tell me that thing
-      I extend one year each time you tell me it.
+  - added EXPERIMENTAL Validator::Custom::Result loose_data method
+  - can set code reference to rule default option to get data at read time.
+  - changed backword compatible policy
+    ------------------------------------------------------------------------
+    If a functionality is DEPRECATED, you can know it by DEPRECATED warnings
+    except for attribute method.
+    You can check all DEPRECATED functionalities by document.
+    DEPRECATED functionality is removed after five years,
+    but if at least one person use the functionality and tell me that thing
+    I extend one year each time you tell me it.
 
-      EXPERIMENTAL functionality will be changed without warnings.
-      ------------------------------------------------------------------------
-
-EXPERIMENTAL functionality will be changed without warnings.
-      
+    EXPERIMENTAL functionality will be changed without warnings.
+    ------------------------------------------------------------------------
+    
 0.1424
-    - added to_array filter
+  - added to_array filter
 0.1422
-    - added require option
+  - added require option
 0.1421
-    - removed EXPERIMENTAL status from DBIx::Custom::Result to_hash()
-    - removed EXPERIMENTAL status from js_fill_form_button, 
-    - removed EXPERIMENTAL status from datetime_to_timepiece, date_to_timepiece
+  - removed EXPERIMENTAL status from DBIx::Custom::Result to_hash()
+  - removed EXPERIMENTAL status from js_fill_form_button, 
+  - removed EXPERIMENTAL status from datetime_to_timepiece, date_to_timepiece
 0.1420
   updated pod
 0.1419
@@ -172,7 +173,7 @@ EXPERIMENTAL functionality will be changed without warnings.
 0.0801
   "rule" is added in place of "validaton_rule"
   "validation_rule" is deprecated
-  updata document
+updata document
   "error_infos" and "add_error_info" is added to Validation::Custom::Result
 0.0708
   catch up with 'Object::Simple' update
@@ -246,13 +247,13 @@ EXPERIMENTAL functionality will be changed without warnings.
 0.0204
   catch up Object::Simple update 2.0003
   change: errors methods dereference
-  
+
 0.0203
   rename add_validator to add_constraint
   rename validators to constraints
   rename $VALIDATORS to $CONSTRINTS
   catch up Object::Simple bag fix
-  
+
 0.0202
   bag fix: $validator is spliced
 0.0201
