@@ -19,4 +19,5 @@ t/validator-custom/T3.pm
 t/validator-custom/T4.pm
 t/validator-custom/T5.pm
 t/validator-custom/T6.pm
-META.yml                                 Module meta-data (added by MakeMaker)
+META.yml                                 Module YAML meta-data (added by MakeMaker)
+META.json                                Module JSON meta-data (added by MakeMaker)
