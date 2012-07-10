@@ -6,6 +6,8 @@ lib/Validator/Custom/Guide/Ja.pod
 lib/Validator/Custom/Result.pm
 Makefile.PL
 MANIFEST			This list of files
+MYMETA.json
+MYMETA.yml
 README
 t/00-load.t
 t/boilerplate.t
