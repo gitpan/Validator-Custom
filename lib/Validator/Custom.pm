@@ -1,7 +1,7 @@
 package Validator::Custom;
 use Object::Simple -base;
 use 5.008001;
-our $VERSION = '0.1428';
+our $VERSION = '0.15';
 
 use Carp 'croak';
 use Validator::Custom::Constraint;
@@ -193,7 +193,11 @@ sub new {
     trim              => \&Validator::Custom::Constraint::trim,
     trim_collapse     => \&Validator::Custom::Constraint::trim_collapse,
     trim_lead         => \&Validator::Custom::Constraint::trim_lead,
-    trim_trail        => \&Validator::Custom::Constraint::trim_trail
+    trim_trail        => \&Validator::Custom::Constraint::trim_trail,
+    trim_uni          => \&Validator::Custom::Constraint::trim_uni,
+    trim_uni_collapse => \&Validator::Custom::Constraint::trim_uni_collapse,
+    trim_uni_lead     => \&Validator::Custom::Constraint::trim_uni_lead,
+    trim_uni_trail    => \&Validator::Custom::Constraint::trim_uni_trail
   );
   
   return $self;
@@ -1050,14 +1054,29 @@ Check if the values is in array.
   my $data = {value1 => 'aaa', value2 => 'bbbbb'};
   my $rule => [
     value1 => [
-      {'length' => 3}
+      # length is equal to 3
+      {'length' => 3} # 'aaa'
     ],
     value2 => [
+      # length is greater than or equal to 2 and lower than or equeal to 5
       {'length' => [2, 5]} # 'bb' to 'bbbbb'
+    ]
+    value3 => [
+      # length is greater than or equal to 2 and lower than or equeal to 5
+      {'length' => {min => 2, max => 5}} # 'bb' to 'bbbbb'
+    ]
+    value4 => [
+      # greater than or equal to 2
+      {'length' => {min => 2}}
+    ]
+    value5 => [
+      # lower than or equal to 5
+      {'length' => {max => 5}}
     ]
   ];
 
 Length of the value.
+
 Not that if value is internal string, length is character length.
 if value is byte string, length is byte length.
 
@@ -1304,6 +1323,50 @@ which don't contain unicode space character.
 Trim trailing white space.
 Not that trim only C<[ \t\n\r\f]>
 which don't contain unicode space character.
+
+=head2 C<trim_uni>
+
+  my $data = {name => '  Ken  '};
+  my $rule = [
+    name => [
+      'trim_uni' # 'Ken'
+    ]
+  ];
+
+Trim leading and trailing white space, which contain unicode space character.
+
+=head2 C<trim_uni_collapse>
+
+  my $data = {name => '  Ken   Takagi  '};
+  my $rule = [
+    name => [
+      'trim_uni_collapse' # 'Ken Takagi'
+    ]
+  ];
+
+Trim leading and trailing white space, which contain unicode space character.
+
+=head2 C<trim_uni_lead>
+
+  my $data = {name => '  Ken  '};
+  my $rule = [
+    name => [
+      'trim_uni_lead' # 'Ken  '
+    ]
+  ];
+
+Trim leading white space, which contain unicode space character.
+
+=head2 C<trim_uni_trail>
+
+  my $data = {name => '  Ken  '};
+  my $rule = [
+    name => [
+      'trim_uni_trail' # '  Ken'
+    ]
+  ];
+
+Trim trailing white space, which contain unicode space character.
 
 =head1 DEPRECATED FUNCTIONALITIES
 

@@ -187,16 +187,28 @@ sub length {
   my $min;
   my $max;
   if(ref $args eq 'ARRAY') { ($min, $max) = @$args }
-  else { $min = $args }
+  elsif (ref $args eq 'HASH') {
+    $min = $args->{min};
+    $max = $args->{max};
+  }
+  else { $min = $max = $args }
   
   croak "Constraint 'length' needs one or two arguments"
-    unless defined $min;
+    unless defined $min || defined $max;
   
   my $length  = length $value;
-  $max     ||= $min;
-  $min += 0;
-  $max += 0;
-  return $min <= $length && $length <= $max ? 1 : 0;
+  my $is_valid;
+  if (defined $min && defined $max) {
+    $is_valid = $length >= $min && $length <= $max;
+  }
+  elsif (defined $min) {
+    $is_valid = $length >= $min;
+  }
+  elsif (defined $max) {
+    $is_valid =$length <= $max;
+  }
+  
+  return $is_valid;
 }
 
 sub less_than {
@@ -281,71 +293,31 @@ sub trim_trail {
   return [1, $value];
 }
 
+sub trim_uni {
+  my $value = shift;
+  $value =~ s/^\s*(.*?)\s*$/$1/ms;
+  return [1, $value];
+}
+
+sub trim_uni_collapse {
+  my $value = shift;
+  if (defined $value) {
+    $value =~ s/\s+/ /g;
+    $value =~ s/^\s*(.*?)\s*$/$1/ms;
+  }
+  return [1, $value];
+}
+
+sub trim_uni_lead {
+  my $value = shift;
+  $value =~ s/^\s+(.*)$/$1/ms;
+  return [1, $value];
+}
+
+sub trim_uni_trail {
+  my $value = shift;
+  $value =~ s/^(.*?)\s+$/$1/ms;
+  return [1, $value];
+}
+
 1;
-
-=head1 NAME
-
-Validator::Custom::Constraint - Constraint functions
-
-=head1 FUNCTIONS
-
-These functions is explained in L<Validator::Custom>
-
-=head2 C<ascii>
-
-=head2 C<between>
-
-=head2 C<blank>
-
-=head2 C<date_to_timepiece>
-
-=head2 C<datetime_to_timepiece>
-
-=head2 C<decimal>
-    
-=head2 C<defined>
-
-=head2 C<duplication>
-
-=head2 C<equal_to>
-
-=head2 C<greater_than>
-
-=head2 C<http_url>
-
-=head2 C<int>
-
-=head2 C<in_array>
-
-=head2 C<length>
-
-=head2 C<less_than>
-
-=head2 C<merge>
-
-=head2 C<not_blank>
-
-=head2 C<not_defined>
-
-=head2 C<not_space>
-
-=head2 C<uint>
-
-=head2 C<regex>
-
-=head2 C<selected_at_least>
-
-=head2 C<shift_array>
-
-=head2 C<space>
-
-=head2 C<trim>
-
-=head2 C<trim_collapse>
-
-=head2 C<trim_lead>
-
-=head2 C<trim_trail>
-
-=cut
-
