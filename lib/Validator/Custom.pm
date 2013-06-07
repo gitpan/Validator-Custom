@@ -1,7 +1,7 @@
 package Validator::Custom;
 use Object::Simple -base;
 use 5.008001;
-our $VERSION = '0.15';
+our $VERSION = '0.16';
 
 use Carp 'croak';
 use Validator::Custom::Constraint;
@@ -72,23 +72,23 @@ sub js_fill_form_button {
     return value;
   };
   
-	var addEvent = (function(){
-	  if(document.addEventListener) {
-	    return function(node,type,handler){
-	      node.addEventListener(type,handler,false);
-	    };
-	  } else if (document.attachEvent) {
-	    return function(node,type,handler){
-	      node.attachEvent('on' + type, function(evt){
-	        handler.call(node, evt);
-	      });
-	    };
-	  }
-	})();
-	
-	var button = document.createElement("input");
-	button.setAttribute("type","button");
-	button.value = "Fill Form";
+  var addEvent = (function(){
+    if(document.addEventListener) {
+      return function(node,type,handler){
+        node.addEventListener(type,handler,false);
+      };
+    } else if (document.attachEvent) {
+      return function(node,type,handler){
+        node.attachEvent('on' + type, function(evt){
+          handler.call(node, evt);
+        });
+      };
+    }
+  })();
+  
+  var button = document.createElement("input");
+  button.setAttribute("type","button");
+  button.value = "Fill Form";
   document.body.insertBefore(button, document.body.firstChild)
 
   addEvent(
@@ -224,9 +224,6 @@ sub validate {
   # Validation rule
   $rule ||= $self->rule;
   
-  # Shared rule
-  my $shared_rule = $self->shared_rule;
-  
   # Data filter
   my $filter = $self->data_filter;
   $data = $filter->($data) if $filter;
@@ -259,26 +256,27 @@ sub validate {
   
   # Found missing paramteters
   my $found_missing_params = {};
+  
+  # Shared rule
+  my $shared_rule = $self->shared_rule;
+  warn "DBIx::Custom::shared_rule is DEPRECATED!"
+    if @$shared_rule;
+
+  my $struct_rules = $self->parse_rule($rule, $shared_rule);
 
   # Process each key
   OUTER_LOOP:
-  for (my $i = 0; $i < @{$rule}; $i += 2) {
+  for (my $i = 0; $i < @$struct_rules; $i++) {
+    
+    my $r = $struct_rules->[$i];
     
     # Increment position
     $pos++;
     
     # Key, options, and constraints
-    my $key = $rule->[$i];
-    my $opts = $rule->[$i + 1];
-    my $constraints;
-    if (ref $opts eq 'HASH') {
-      $constraints = $rule->[$i + 2];
-      $i++;
-    }
-    else {
-      $constraints = $opts;
-      $opts = {};
-    }
+    my $key = $r->{key};
+    my $opts = $r->{option};
+    my $constraints = $r->{constraints};
     
     # Check constraints
     croak "Constraints of validation rule must be array ref\n" .
@@ -299,14 +297,14 @@ sub validate {
     if (ref $key eq 'ARRAY') { $keys = $key }
     elsif (ref $key eq 'Regexp') {
       $keys = [];
-      foreach my $k (keys %$data) {
+      for my $k (keys %$data) {
          push @$keys, $k if $k =~ /$key/;
       }
     }
     else { $keys = [$key] }
     
     # Check option
-    foreach my $oname (keys %$opts) {
+    for my $oname (keys %$opts) {
       croak qq{Option "$oname" of "$result_key" is invalid name}
         unless $VALID_OPTIONS{$oname};
     }
@@ -319,7 +317,7 @@ sub validate {
     my $require = exists $opts->{require} ? $opts->{require} : 1;
     my $found_missing_param;
     my $missing_params = $result->missing_params;
-    foreach my $key (@$keys) {
+    for my $key (@$keys) {
       unless (exists $data->{$key}) {
         if ($require) {
           push @$missing_params, $key
@@ -339,19 +337,16 @@ sub validate {
     # Already valid
     next if $valid_keys->{$result_key};
     
-    # Add shared rule
-    push @$constraints, @$shared_rule;
-    
     # Validation
     my $value = @$keys > 1
       ? [map { $data->{$_} } @$keys]
       : $data->{$keys->[0]};
 
-    foreach my $constraint (@$constraints) {
+    for my $c (@$constraints) {
       
       # Arrange constraint information
-      my ($constraint, $message)
-        = ref $constraint eq 'ARRAY' ? @$constraint : ($constraint);
+      my $constraint = $c->{constraint};
+      my $message = $c->{message};
       
       # Data type
       my $data_type = {};
@@ -396,12 +391,12 @@ sub validate {
         $value = [$value] unless ref $value eq 'ARRAY';
         
         # Validation loop
-        for (my $i = 0; $i < @$value; $i++) {
-          my $data = $value->[$i];
+        for (my $k = 0; $k < @$value; $k++) {
+          my $data = $value->[$k];
           
           # Validation
-          for (my $k = 0; $k < @$cfuncs; $k++) {
-            my $cfunc = $cfuncs->[$k];
+          for (my $j = 0; $j < @$cfuncs; $j++) {
+            my $cfunc = $cfuncs->[$j];
             
             # Validate
             my $cresult = $cfunc->($data, $arg, $self);
@@ -410,7 +405,7 @@ sub validate {
             my $v;
             if (ref $cresult eq 'ARRAY') {
               ($is_valid, $v) = @$cresult;
-              $value->[$i] = $v;
+              $value->[$k] = $v;
             }
             else { $is_valid = $cresult }
             
@@ -425,7 +420,7 @@ sub validate {
       # Data is scalar
       else {
         # Validation
-        foreach my $cfunc (@$cfuncs) {
+        for my $cfunc (@$cfuncs) {
           my $cresult = $cfunc->($value, $arg, $self);
           
           if (ref $cresult eq 'ARRAY') {
@@ -460,11 +455,11 @@ sub validate {
         unless ($error_stock) {
           # Check rest constraint
           my $found;
-          for (my $k = $i + 2; $k < @{$rule}; $k += 2) {
-            my $key = $rule->[$k];
-            $k++ if ref $rule->[$k + 1] eq 'HASH';
-            $key = (keys %$key)[0] if ref $key eq 'HASH';
-            $found = 1 if $key eq $result_key;
+          for (my $k = $i + 1; $k < @$struct_rules; $k++) {
+            my $r_next = $struct_rules->[$k];
+            my $key_next = $r_next->{key};
+            $key_next = (keys %$key)[0] if ref $key eq 'HASH';
+            $found = 1 if $key_next eq $result_key;
           }
           last OUTER_LOOP unless $found;
         }
@@ -483,6 +478,62 @@ sub validate {
   }
   
   return $result;
+}
+
+sub parse_rule {
+  my ($self, $rule, $shared_rule) = @_;
+  
+  $shared_rule ||= [];
+  
+  my $struct_rules = [];
+  
+  for (my $i = 0; $i < @{$rule}; $i += 2) {
+    
+    my $struct_rule = {};
+    
+    # Key, options, and constraints
+    my $key = $rule->[$i];
+    my $option = $rule->[$i + 1];
+    my $constraints;
+    if (ref $option eq 'HASH') {
+      $constraints = $rule->[$i + 2];
+      $i++;
+    }
+    else {
+      $constraints = $option;
+      $option = {};
+    }
+    my $constraints_h = [];
+    
+    if (ref $constraints eq 'ARRAY') {
+      for my $constraint (@$constraints, @$shared_rule) {
+        my $constraint_h = {};
+        if (ref $constraint eq 'ARRAY') {
+          $constraint_h->{constraint} = $constraint->[0];
+          $constraint_h->{message} = $constraint->[1];
+        }
+        else {
+          $constraint_h->{constraint} = $constraint;
+        }
+        push @$constraints_h, $constraint_h;
+      }
+    } else {
+      $constraints_h = {
+        'ERROR' => {
+          value => $constraints,
+          message => 'Constrains must be array reference'
+        }
+      };
+    }
+    
+    $struct_rule->{key} = $key;
+    $struct_rule->{constraints} = $constraints_h;
+    $struct_rule->{option} = $option;
+    
+    push @$struct_rules, $struct_rule;
+  }
+  
+  return $struct_rules;
 }
 
 sub _parse_constraint {
@@ -517,7 +568,7 @@ sub _parse_constraint {
   my @cnames = split(/\|\|/, $constraint);
   
   # Convert constarint names to constraint funcions
-  foreach my $cname (@cnames) {
+  for my $cname (@cnames) {
     $cname ||= '';
     
     # Trim space
@@ -569,7 +620,7 @@ sub _parse_random_string_rule {
   my $result = {};
   
   # Parse string rule
-  foreach my $name (keys %$rule) {
+  for my $name (keys %$rule) {
     # Pettern
     my $pattern = $rule->{$name};
     $pattern = '' unless $pattern;
@@ -654,40 +705,33 @@ Validator::Custom - Validate user input easily
 
   use Validator::Custom;
   my $vc = Validator::Custom->new;
-
+  
+  # Data
   my $data = {age => 19, name => 'Ken Suzuki'};
   
+  # Rule
   my $rule = [
-    age => {message => 'age must be integer'} => [
-      'not_blank',
-      'int'
+    age => [
+      ['not_blank' => 'age is empty.'],
+      ['int' => 'age must be integer']
     ],
-    name => {message => 'name must be string. the length 1 to 5'} => [
-      'not_blank',
-      {length => [1, 5]}
-    ],
-    price => [
-      'not_blank',
-      'int'
+    name => [
+      ['not_blank' => 'name is emtpy'],
+      [{length => [1, 5]} => 'name is too long']
     ]
   ];
   
+  # Validation
   my $result = $vc->validate($data, $rule);
-
-  unless ($result->is_ok) {
-    if ($result->has_missing) {
-      my $missing_params = $result->missing_params;
-    }
-    
-    if ($result->has_invalid) {
-      my $messages = $result->messages_to_hash;
-    }
+  if ($result->is_ok) {
+    # Safety data
+    my $safe_data = $vresult->data;
   }
-  my $valid_data = $result->data;
-  my $raw_data = $result->raw_data;
-  my $loose_data = $result->loose_data;
+  else {
+    # Error messgaes
+    my $errors = $vresult->messages;
+  }
 
-  
 =head1 DESCRIPTION
 
 L<Validator::Custom> validate user input easily.
@@ -726,14 +770,14 @@ L<Validator::Custom::Guide> - L<Validator::Custom> Guide
 
 =head1 ATTRIBUTES
 
-=head2 C<constraints>
+=head2 constraints
 
   my $constraints = $vc->constraints;
   $vc             = $vc->constraints(\%constraints);
 
 Constraint functions.
 
-=head2 C<data_filter>
+=head2 data_filter
 
   my $filter = $vc->data_filter;
   $vc        = $vc->data_filter(\&data_filter);
@@ -751,7 +795,7 @@ the data to hash reference.
     return $hash;
   });
 
-=head2 C<error_stock>
+=head2 error_stock
 
   my $error_stock = $vc->error_stcok;
   $vc             = $vc->error_stock(1);
@@ -760,7 +804,7 @@ If error_stock is set to 0, C<validate()> return soon after invalid value is fou
 
 Default to 1. 
 
-=head2 C<rule>
+=head2 rule
 
   my $rule = $vc->rule;
   $vc      = $vc->rule(\@rule);
@@ -768,7 +812,7 @@ Default to 1.
 Validation rule. If second argument of C<validate()> is not specified.
 this rule is used.
 
-=head2 C<syntax>
+=head2 syntax
 
   my $syntax = $vc->syntax;
   $vc        = $vc->syntax($syntax);
@@ -780,13 +824,13 @@ Syntax of rule.
 L<Validator::Custom> inherits all methods from L<Object::Simple>
 and implements the following new ones.
 
-=head2 C<new>
+=head2 new
 
   my $vc = Validator::Custom->new;
 
 Create a new L<Validator::Custom> object.
 
-=head2 C<js_fill_form_button>
+=head2 js_fill_form_button
 
   my $button = $self->js_fill_form_button(
     mail => '[abc]{3}@[abc]{2}.com,
@@ -802,7 +846,21 @@ and checkbox, radio button, and list box is automatically selected.
 
 Note that this methods require L<JSON> module.
 
-=head2 C<validate>
+=head2 parse_rule EXPERIMENTAL
+
+  my $parsed_rule = $vc->parse_rule($rule);
+
+Validator::Custom rule is a little complex.
+You maybe make misstakes offten.
+If you want to know that how Validator::Custom parse rule,
+use C<parse_rule> method.
+
+  use Data::Dumper;
+  print Dumper $vc->parse_rule($rule);
+
+If you see C<ERROR> key, rule syntx is wrong.
+
+=head2 validate
 
   $result = $vc->validate($data, $rule);
   $result = $vc->validate($data);
@@ -812,7 +870,7 @@ Return value is L<Validator::Custom::Result> object.
 If second argument is not specified,
 C<rule> attribute is used.
 
-=head2 C<register_constraint>
+=head2 register_constraint
 
   $vc->register_constraint(%constraint);
   $vc->register_constraint(\%constraint);
@@ -921,7 +979,7 @@ Default to 1.
 
 =head1 CONSTRAINTS
 
-=head2 C<ascii>
+=head2 ascii
 
   my $data => {name => 'Ken'};
   my $rule = [
@@ -930,9 +988,9 @@ Default to 1.
     ]
   ];
 
-Ascii.
+Ascii graphic characters(hex 21-7e).
 
-=head2 C<between>
+=head2 between
 
   my $data = {age => 19};
   my $rule = [
@@ -943,7 +1001,7 @@ Ascii.
 
 Between A and B.
 
-=head2 C<blank>
+=head2 blank
 
   my $data = {name => ''};
   my $rule = [
@@ -954,7 +1012,7 @@ Between A and B.
 
 Blank.
 
-=head2 C<decimal>
+=head2 decimal
   
   my $data = {num1 => '123', num2 => '1.45'};
   my $rule => [
@@ -969,7 +1027,7 @@ Blank.
 Decimal. You can specify maximus digits number at before
 and after '.'.
 
-=head2 C<defined>
+=head2 defined
 
   my $data => {name => 'Ken'};
   my $rule = [
@@ -980,7 +1038,7 @@ and after '.'.
 
 Defined.
 
-=head2 C<duplication>
+=head2 duplication
 
   my $data = {mail1 => 'a@somehost.com', mail2 => 'a@somehost.com'};
   my $rule => [
@@ -994,7 +1052,7 @@ Check if the two data are same or not.
 Note that if one value is not defined or both values are not defined,
 result of validation is false.
 
-=head2 C<equal_to>
+=head2 equal_to
 
   my $data = {price => 1000};
   my $rule = [
@@ -1005,7 +1063,7 @@ result of validation is false.
 
 Numeric equal comparison.
 
-=head2 C<greater_than>
+=head2 greater_than
 
   my $data = {price => 1000};
   my $rule = [
@@ -1016,7 +1074,7 @@ Numeric equal comparison.
 
 Numeric "greater than" comparison
 
-=head2 C<http_url>
+=head2 http_url
 
   my $data = {url => 'http://somehost.com'};
   my $rule => [
@@ -1027,7 +1085,7 @@ Numeric "greater than" comparison
 
 HTTP(or HTTPS) URL.
 
-=head2 C<int>
+=head2 int
 
   my $data = {age => 19};
   my $rule = [
@@ -1038,7 +1096,7 @@ HTTP(or HTTPS) URL.
 
 Integer.
 
-=head2 C<in_array>
+=head2 in_array
 
   my $data = {food => 'sushi'};
   my $rule = [
@@ -1049,7 +1107,7 @@ Integer.
 
 Check if the values is in array.
 
-=head2 C<length>
+=head2 length
 
   my $data = {value1 => 'aaa', value2 => 'bbbbb'};
   my $rule => [
@@ -1080,7 +1138,7 @@ Length of the value.
 Not that if value is internal string, length is character length.
 if value is byte string, length is byte length.
 
-=head2 C<less_than>
+=head2 less_than
 
   my $data = {num => 20};
   my $rule = [
@@ -1091,7 +1149,7 @@ if value is byte string, length is byte length.
 
 Numeric "less than" comparison.
 
-=head2 C<not_blank>
+=head2 not_blank
 
   my $data = {name => 'Ken'};
   my $rule = [
@@ -1102,7 +1160,7 @@ Numeric "less than" comparison.
 
 Not blank.
 
-=head2 C<not_defined>
+=head2 not_defined
 
   my $data = {name => 'Ken'};
   my $rule = [
@@ -1113,7 +1171,7 @@ Not blank.
 
 Not defined.
 
-=head2 C<not_space>
+=head2 not_space
 
   my $data = {name => 'Ken'};
   my $rule = [
@@ -1126,7 +1184,7 @@ Not contain only space characters.
 Not that space is only C<[ \t\n\r\f]>
 which don't contain unicode space character.
 
-=head2 C<space>
+=head2 space
 
   my $data = {name => '   '};
   my $rule = [
@@ -1139,7 +1197,7 @@ White space or empty stirng.
 Not that space is only C<[ \t\n\r\f]>
 which don't contain unicode space character.
 
-=head2 C<uint>
+=head2 uint
 
   my $data = {age => 19};
   my $rule = [
@@ -1150,7 +1208,7 @@ which don't contain unicode space character.
 
 Unsigned integer(contain zero).
   
-=head2 C<regex>
+=head2 regex
 
   my $data = {num => '123'};
   my $rule => [
@@ -1161,7 +1219,7 @@ Unsigned integer(contain zero).
 
 Match a regular expression.
 
-=head2 C<selected_at_least>
+=head2 selected_at_least
 
   my $data = {hobby => ['music', 'movie' ]};
   my $rule => [
@@ -1175,7 +1233,7 @@ In other word, the array contains at least specified count element.
 
 =head1 FILTERS
 
-=head2 C<date_to_timepiece>
+=head2 date_to_timepiece
 
   my $data = {date => '2010/11/12'};
   my $rule = [
@@ -1205,7 +1263,7 @@ And year and month and mday combination is ok.
 
 Note that L<Time::Piece> is required.
 
-=head2 C<datetime_to_timepiece>
+=head2 datetime_to_timepiece
 
   my $data = {datetime => '2010/11/12 12:14:45'};
   my $rule = [
@@ -1236,7 +1294,7 @@ And year and month and mday combination is ok.
 
 Note that L<Time::Piece> is required.
 
-=head2 C<merge>
+=head2 merge
 
   my $data = {name1 => 'Ken', name2 => 'Rika', name3 => 'Taro'};
   my $rule = [
@@ -1248,7 +1306,7 @@ Note that L<Time::Piece> is required.
 Merge the values.
 Note that if one value is not defined, merged value become undefined.
 
-=head2 C<shift>
+=head2 shift
 
   my $data = {names => ['Ken', 'Taro']};
   my $rule => [
@@ -1259,7 +1317,7 @@ Note that if one value is not defined, merged value become undefined.
 
 Shift the head element of array.
 
-=head2 C<to_array>
+=head2 to_array
 
   my $data = {languages => 'Japanese'};
   my $rule = [
@@ -1271,7 +1329,7 @@ Shift the head element of array.
 Convert non array reference data to array reference.
 This is useful to check checkbox values or select multiple values.
 
-=head2 C<trim>
+=head2 trim
 
   my $data = {name => '  Ken  '};
   my $rule = [
@@ -1284,7 +1342,7 @@ Trim leading and trailing white space.
 Not that trim only C<[ \t\n\r\f]>
 which don't contain unicode space character.
 
-=head2 C<trim_collapse>
+=head2 trim_collapse
 
   my $data = {name => '  Ken   Takagi  '};
   my $rule = [
@@ -1298,7 +1356,7 @@ and collapse all whitespace characters into a single space.
 Not that trim only C<[ \t\n\r\f]>
 which don't contain unicode space character.
 
-=head2 C<trim_lead>
+=head2 trim_lead
 
   my $data = {name => '  Ken  '};
   my $rule = [
@@ -1311,7 +1369,7 @@ Trim leading white space.
 Not that trim only C<[ \t\n\r\f]>
 which don't contain unicode space character.
 
-=head2 C<trim_trail>
+=head2 trim_trail
 
   my $data = {name => '  Ken  '};
   my $rule = [
@@ -1324,7 +1382,7 @@ Trim trailing white space.
 Not that trim only C<[ \t\n\r\f]>
 which don't contain unicode space character.
 
-=head2 C<trim_uni>
+=head2 trim_uni
 
   my $data = {name => '  Ken  '};
   my $rule = [
@@ -1335,7 +1393,7 @@ which don't contain unicode space character.
 
 Trim leading and trailing white space, which contain unicode space character.
 
-=head2 C<trim_uni_collapse>
+=head2 trim_uni_collapse
 
   my $data = {name => '  Ken   Takagi  '};
   my $rule = [
@@ -1346,7 +1404,7 @@ Trim leading and trailing white space, which contain unicode space character.
 
 Trim leading and trailing white space, which contain unicode space character.
 
-=head2 C<trim_uni_lead>
+=head2 trim_uni_lead
 
   my $data = {name => '  Ken  '};
   my $rule = [
@@ -1357,7 +1415,7 @@ Trim leading and trailing white space, which contain unicode space character.
 
 Trim leading white space, which contain unicode space character.
 
-=head2 C<trim_uni_trail>
+=head2 trim_uni_trail
 
   my $data = {name => '  Ken  '};
   my $rule = [
@@ -1393,16 +1451,12 @@ L<Validator::Custom::Result>
 
 =head1 BACKWORD COMPATIBLE POLICY
 
-If a functionality is DEPRECATED, you can know it by DEPRECATED warnings
-except for attribute method.
-You can check all DEPRECATED functionalities by document.
+If a functionality is DEPRECATED, you can know it by DEPRECATED warnings.
 DEPRECATED functionality is removed after five years,
 but if at least one person use the functionality and tell me that thing
 I extend one year each time you tell me it.
 
 EXPERIMENTAL functionality will be changed without warnings.
-
-This policy is changed at 2011/6/28
 
 =head1 AUTHOR
 
@@ -1412,7 +1466,7 @@ L<http://github.com/yuki-kimoto/Validator-Custom>
 
 =head1 COPYRIGHT & LICENCE
 
-Copyright 2009-2011 Yuki Kimoto, all rights reserved.
+Copyright 2009-2013 Yuki Kimoto, all rights reserved.
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

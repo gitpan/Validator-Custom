@@ -44,7 +44,9 @@ our $DEFAULT_MESSAGE = $Validator::Custom::Result::DEFAULT_MESSAGE;
   my @errors = Validator::Custom->new(rule => $rule)->validate($data)->errors;
   is_deeply([@errors], [qw/k1Error2 k2Error2/], 'rule');
   
-  @errors = Validator::Custom->new->error_stock(0)->validate($data, $rule)->errors;
+  $validator = Validator::Custom->new->error_stock(0);
+  $vresult = $validator->validate($data, $rule);
+  @errors = $vresult->errors;
   is(scalar @errors, 1, 'error_stock is 0');
   is($errors[0], 'k1Error2', 'error_stock is 0');
 }
@@ -2317,4 +2319,22 @@ test 'trim_uni';
     { int_param => '123', left => "abc　　", right => '　　def', collapse => "a b c"},
     'trim check'
   );
+}
+
+{
+  # parse_rule
+  my $vc = Validator::Custom->new;
+  my $rule = [
+    k1 => [
+      ['int' => 'a']
+    ],
+    k2 => 'int'
+  ];
+  my $r = $vc->parse_rule($rule);
+  
+  is($r->[0]{key}, 'k1');
+  is($r->[0]{constraints}[0]{constraint}, 'int');
+  is($r->[0]{constraints}[0]{message}, 'a');
+  is($r->[1]{constraints}{ERROR}{value}, 'int');
+  like($r->[1]{constraints}{ERROR}{message}, qr/Constrains must be array reference/);
 }

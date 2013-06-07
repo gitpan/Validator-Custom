@@ -9,9 +9,6 @@ MANIFEST			This list of files
 MYMETA.json
 MYMETA.yml
 README
-t/00-load.t
-t/boilerplate.t
-t/pod.t
 t/validator-custom-required-json.t
 t/validator-custom-required-timepiece.t
 t/validator-custom.t
