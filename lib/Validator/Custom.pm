@@ -1,13 +1,14 @@
 package Validator::Custom;
 use Object::Simple -base;
 use 5.008001;
-our $VERSION = '0.20';
+our $VERSION = '0.21';
 
 use Carp 'croak';
 use Validator::Custom::Constraint;
 use Validator::Custom::Result;
+use Validator::Custom::Rule;
 
-has ['data_filter', 'rule', 'normalized_rule'];
+has ['data_filter', 'rule', 'rule_obj'];
 has error_stock => 1;
 
 has syntax => <<'EOS';
@@ -234,10 +235,12 @@ sub validate {
     unless ref $data eq 'HASH';
   
   # Check rule
-  croak "Validation rule must be array ref\n" .
-      "(see syntax of validation rule 1)\n" .
-      $self->_rule_syntax($rule)
-    unless ref $rule eq 'ARRAY';
+  unless (ref $rule eq 'Validator::Custom::Rule') {
+    croak "Validation rule must be array ref\n" .
+        "(see syntax of validation rule 1)\n" .
+        $self->_rule_syntax($rule)
+      unless ref $rule eq 'ARRAY';
+  }
   
   # Result
   my $result = Validator::Custom::Result->new;
@@ -262,15 +265,22 @@ sub validate {
   my $shared_rule = $self->shared_rule;
   warn "DBIx::Custom::shared_rule is DEPRECATED!"
     if @$shared_rule;
-
-  my $normalized_rule = $self->parse_rule($rule, $shared_rule);
-  $self->normalized_rule($normalized_rule);
+  
+  if (ref $rule eq 'Validator::Custom::Rule') {
+    $self->rule_obj($rule);
+  }
+  else {
+    my $rule_obj = Validator::Custom::Rule->new;
+    $rule_obj->parse($rule, $shared_rule);
+    $self->rule_obj($rule_obj);
+  }
+  my $rule_obj = $self->rule_obj;
 
   # Process each key
   OUTER_LOOP:
-  for (my $i = 0; $i < @$normalized_rule; $i++) {
+  for (my $i = 0; $i < @{$rule_obj->rule}; $i++) {
     
-    my $r = $normalized_rule->[$i];
+    my $r = $rule_obj->rule->[$i];
     
     # Increment position
     $pos++;
@@ -412,6 +422,7 @@ sub validate {
             elsif (ref $cresult eq 'HASH') {
               $is_valid = $cresult->{result};
               $message = $cresult->{message} unless $is_valid;
+              $value->[$k] = $cresult->{output} if exists $cresult->{output};
             }
             else { $is_valid = $cresult }
             
@@ -437,6 +448,7 @@ sub validate {
           elsif (ref $cresult eq 'HASH') {
             $is_valid = $cresult->{result};
             $message = $cresult->{message} unless $is_valid;
+            $value = $cresult->{output} if exists $cresult->{output} && $is_valid;
           }
           else { $is_valid = $cresult }
           
@@ -465,8 +477,8 @@ sub validate {
         unless ($error_stock) {
           # Check rest constraint
           my $found;
-          for (my $k = $i + 1; $k < @$normalized_rule; $k++) {
-            my $r_next = $normalized_rule->[$k];
+          for (my $k = $i + 1; $k < @{$rule_obj->rule}; $k++) {
+            my $r_next = $rule_obj->rule->[$k];
             my $key_next = $r_next->{key};
             $key_next = (keys %$key)[0] if ref $key eq 'HASH';
             $found = 1 if $key_next eq $result_key;
@@ -488,62 +500,6 @@ sub validate {
   }
   
   return $result;
-}
-
-sub parse_rule {
-  my ($self, $rule, $shared_rule) = @_;
-  
-  $shared_rule ||= [];
-  
-  my $normalized_rule = [];
-  
-  for (my $i = 0; $i < @{$rule}; $i += 2) {
-    
-    my $r = {};
-    
-    # Key, options, and constraints
-    my $key = $rule->[$i];
-    my $option = $rule->[$i + 1];
-    my $constraints;
-    if (ref $option eq 'HASH') {
-      $constraints = $rule->[$i + 2];
-      $i++;
-    }
-    else {
-      $constraints = $option;
-      $option = {};
-    }
-    my $constraints_h = [];
-    
-    if (ref $constraints eq 'ARRAY') {
-      for my $constraint (@$constraints, @$shared_rule) {
-        my $constraint_h = {};
-        if (ref $constraint eq 'ARRAY') {
-          $constraint_h->{constraint} = $constraint->[0];
-          $constraint_h->{message} = $constraint->[1];
-        }
-        else {
-          $constraint_h->{constraint} = $constraint;
-        }
-        push @$constraints_h, $constraint_h;
-      }
-    } else {
-      $constraints_h = {
-        'ERROR' => {
-          value => $constraints,
-          message => 'Constraints must be array reference'
-        }
-      };
-    }
-    
-    $r->{key} = $key;
-    $r->{constraints} = $constraints_h;
-    $r->{option} = $option;
-    
-    push @$normalized_rule, $r;
-  }
-  
-  return $normalized_rule;
 }
 
 sub _parse_constraint {
@@ -688,14 +644,15 @@ sub _parse_random_string_rule {
 }
 
 sub _rule_syntax {
-  my ($self, $rule) = @_;
+  my $self = shift;
   
   my $message = $self->syntax;
-  
   require Data::Dumper;
-  my $normalized_rule = $self->normalized_rule;
-  $message .= "### Rule is interpreted as the follwoing data structure\n";
-  $message .= Data::Dumper->Dump([$normalized_rule], ['$rule']);
+  my $rule_obj = $self->rule_obj;
+  if ($rule_obj) {
+    $message .= "### Rule is interpreted as the follwoing data structure\n";
+    $message .= Data::Dumper->Dump([$rule_obj->rule], ['$rule']);
+  }
   
   return $message;
 }
@@ -815,19 +772,20 @@ If error_stock is set to 0, C<validate()> return soon after invalid value is fou
 
 Default to 1. 
 
-=head2 normalized_rule EXPERIMENTAL
+=head2 rule_obj EXPERIMENTAL
 
-  my normalized_rule = $vc->normalized_rule($rule);
+  my $rule_obj = $vc->rule_obj($rule);
 
 L<Validator::Custom> rule is a little complex.
-You maybe make misstakes offten.
+You maybe make mistakes offten.
 If you want to know that how Validator::Custom parse rule,
-call C<normalized_rule> method after calling C<validate> method.
+See C<rule_obj> attribute after calling C<validate> method.
+This is L<Validator::Custom::Rule> object.
   
   my $vresult = $vc->validate($data, $rule);
 
   use Data::Dumper;
-  print Dumper $vc->normalized_rule;
+  print Dumper $vc->rule_obj->rule;
 
 If you see C<ERROR> key, rule syntx is wrong.
 
@@ -880,8 +838,10 @@ Note that this methods require L<JSON> module.
 
 Validate the data.
 Return value is L<Validator::Custom::Result> object.
-If second argument is not specified,
-C<rule> attribute is used.
+If second argument isn't passed, C<rule> attribute is used as rule.
+
+$rule is array refernce
+(or L<Validator::Custom::Rule> object, this is EXPERIMENTAL).
 
 =head2 register_constraint
 
@@ -989,6 +949,10 @@ even if the value is not found
 Default to 1.
 
 =back
+
+=head1 Manipulate multiple rules
+
+If you want to manipulate multiple rules, use L<Validator::Custom::Rules>.
 
 =head1 CONSTRAINTS
 

@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use lib 't/validator-custom';
 use utf8;
+use Validator::Custom::Rule;
 
 $SIG{__WARN__} = sub { warn $_[0] unless $_[0] =~ /DEPRECATED!/ };
 sub test {print "# $_[0]\n"}
@@ -2322,7 +2323,7 @@ test 'trim_uni';
 }
 
 {
-  # normalized
+  # Rule object
   my $vc = Validator::Custom->new;
   my $rule = [
     k1 => [
@@ -2331,17 +2332,17 @@ test 'trim_uni';
     k2 => 'int'
   ];
   my $vresult = eval { $vc->validate({}, $rule) };
-  my $r = $vc->normalized_rule;
+  my $rule_obj = $vc->rule_obj;
   
-  is($r->[0]{key}, 'k1');
-  is($r->[0]{constraints}[0]{constraint}, 'int');
-  is($r->[0]{constraints}[0]{message}, 'a');
-  is($r->[1]{constraints}{ERROR}{value}, 'int');
-  like($r->[1]{constraints}{ERROR}{message}, qr/Constraints must be array reference/);
+  is($rule_obj->rule->[0]{key}, 'k1');
+  is($rule_obj->rule->[0]{constraints}[0]{constraint}, 'int');
+  is($rule_obj->rule->[0]{constraints}[0]{message}, 'a');
+  is($rule_obj->rule->[1]{constraints}{ERROR}{value}, 'int');
+  like($rule_obj->rule->[1]{constraints}{ERROR}{message}, qr/Constraints must be array reference/);
 }
 
+# Custom error message
 {
-  # Custom error message
   my $vc = Validator::Custom->new;
   $vc->register_constraint(
     c1 => sub {
@@ -2378,4 +2379,47 @@ test 'trim_uni';
   $vresult = $vc->validate({k1 => 'b', k2 => 'b'}, $rule);
   ok(!$vresult->is_ok);
   is_deeply($vresult->messages, ['error1', 'error2']);
+}
+
+# Filter hash representation
+{
+  my $vc = Validator::Custom->new;
+  $vc->register_constraint(
+    c1 => sub {
+      my $value = shift;
+      
+      return {result => 1, output => $value * 2};
+    }
+  );
+  my $rule = [
+    k1 => [
+      'c1'
+    ],
+    k2 => [
+      '@c1'
+    ]
+  ];
+  my $vresult = $vc->validate({k1 => 1, k2 => [2, 3]}, $rule);
+  ok($vresult->is_ok);
+  is($vresult->data->{k1}, 2);
+  is_deeply($vresult->data->{k2}, [4, 6]);
+}
+
+# Pass rule object to validate method
+{
+  my $vc = Validator::Custom->new;
+  my $rule = [
+    k1 => [
+      'not_blank'
+    ],
+    k2 => [
+      'not_blank'
+    ]
+  ];
+  my $rule_obj = Validator::Custom::Rule->new;
+  $rule_obj->parse($rule);
+  
+  my $vresult = $vc->validate({k1 => 'a', k2 => ''}, $rule_obj);
+  ok($vresult->is_valid('k1'));
+  ok(!$vresult->is_valid('k2'));
 }
