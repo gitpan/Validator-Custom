@@ -293,13 +293,13 @@ use T1;
 
 {
   eval{Validator::Custom->new->rule({})->validate({})};
-  like($@, qr/Validation rule must be array ref.+rule 1/sm,
+  like($@, qr/Invalid rule structure/sm,
            'Validation rule not array ref');
 }
 
 {
   eval{Validator::Custom->new->rule([key => 'Int'])->validate({})};
-  like($@, qr/Constraints of validation rule must be array ref.+syntax 2/sm, 
+  like($@, qr/Invalid rule structure/sm, 
            'Constraints of key not array ref');
 }
 
@@ -2362,7 +2362,7 @@ test 'trim_uni';
         return {result => 1};
       }
       else {
-        return {result => 0, message => 'error2'};
+        return {message => 'error2'};
       }
     }
   );
@@ -2422,4 +2422,78 @@ test 'trim_uni';
   my $vresult = $vc->validate({k1 => 'a', k2 => ''}, $rule_obj);
   ok($vresult->is_valid('k1'));
   ok(!$vresult->is_valid('k2'));
+}
+
+# Use constraints function from $_
+{
+  my $vc = Validator::Custom->new;
+  my $rule = [
+    k1 => [
+      sub { $_->blank(@_) || $_->regex($_[0], qr/[0-9]+/) }
+    ],
+    k2 => [
+      sub { $_->blank(@_) || $_->regex($_[0], qr/[0-9]+/) }
+    ],
+    k3 => [
+      sub { $_->blank(@_) || $_->regex($_[0], qr/[0-9]+/) }
+    ],
+  ];
+  
+  my $vresult = $vc->validate({k1 => '', k2 => '123', k3 => 'abc'}, $rule);
+  ok($vresult->is_valid('k1'));
+  ok($vresult->is_valid('k2'));
+  ok(!$vresult->is_valid('k3'));
+}
+
+# new rule syntax
+{
+  my $vc = Validator::Custom->new;
+
+  # new rule syntax - basic
+  {
+    my $rule = $vc->create_rule;
+    $rule->require('k1')->check(
+      'not_blank'
+    );
+    $rule->require('k2')->check(
+      'not_blank'
+    );
+    $rule->require('k3')->check(
+      ['not_blank' => 'k3 is empty']
+    );
+    $rule->optional('k4')->default(5)->check(
+      'not_blank'
+    );
+    my $vresult = $vc->validate({k1 => 'aaa', k2 => '', k3 => '', k4 => ''}, $rule);
+    ok($vresult->is_valid('k1'));
+    is($vresult->data->{k1}, 'aaa');
+    ok(!$vresult->is_valid('k2'));
+    ok(!$vresult->is_valid('k3'));
+    is($vresult->messages_to_hash->{k3}, 'k3 is empty');
+    is($vresult->data->{k4}, 5);
+  }
+  
+  # new rule syntax - message option
+  {
+    my $rule = $vc->create_rule;
+    $rule->require('k1')->message('k1 is invalid')->check(
+      'not_blank'
+    );
+
+    my $vresult = $vc->validate({k1 => ''}, $rule);
+    ok(!$vresult->is_valid('k1'));
+    is($vresult->message('k1'), 'k1 is invalid');
+  }
+  
+  # new rule syntax - copy option
+  {
+    my $rule = $vc->create_rule;
+    $rule->require('k1')->copy(0)->check(
+      'not_blank'
+    );
+
+    my $vresult = $vc->validate({k1 => 'aaa'}, $rule);
+    ok($vresult->is_valid('k1'));
+    ok(!defined $vresult->data->{'k1'});
+  }
 }
